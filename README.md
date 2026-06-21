@@ -227,5 +227,19 @@ protection, ECDH key management, YAML rule engine, real NSL-KDD data, alert corr
 ## License
 Released under the [MIT License](LICENSE).
 
+## ⚠️ Legal Disclaimer
+This project is provided **for research and educational purposes only**. It includes
+offensive security tooling (a port/web vulnerability scanner) and an **intentionally
+vulnerable** lab application that must never be deployed in production or used against any
+system you do not own or are not explicitly authorized to test.
+
+You are solely responsible for how you use this software and for complying with all
+applicable laws and regulations in your jurisdiction. The author(s) and contributors
+**accept no liability whatsoever** for any direct or indirect damage, data loss, misuse, or
+unlawful activity arising from the use of this project. The software is provided **"as is"**,
+without warranty of any kind, express or implied (see the [MIT License](LICENSE)).
+
+By using, cloning, or forking this repository you acknowledge and accept these terms.
+
 > ⚠️ **Ethics:** The offensive scanner must only be used against lab targets you own / are
 > authorized to test.
