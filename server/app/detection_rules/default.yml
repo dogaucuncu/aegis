@@ -1,0 +1,80 @@
+# Aegis tespit kuralları (Sigma-benzeri). rules.py bunları yükleyip değerlendirir.
+# op: in | contains_any | equals | len_gte ; window: zaman-pencereli eşik.
+# {data.x}/{agent_id}/{window_count} şablonları başlık/açıklamada interpolasyona uğrar.
+
+- id: suspicious-process-name
+  event_type: process
+  severity: high
+  conditions:
+    - field: data.name
+      op: in
+      lower: true
+      value: [mimikatz.exe, nc.exe, ncat.exe, psexec.exe, procdump.exe]
+  title: "Şüpheli süreç adı: {data.name}"
+  description: "Bilinen saldırı aracı çalıştırıldı: {data.cmdline}"
+  dedup: "{agent_id}|proc|{data.name}"
+
+- id: suspicious-cmdline
+  event_type: process
+  severity: high
+  conditions:
+    - field: data.cmdline
+      op: contains_any
+      lower: true
+      value: ["-enc", "-encodedcommand", "invoke-expression", "iex ", "downloadstring",
+              "frombase64string", "mimikatz", "/etc/shadow", "nc -e", "bash -i"]
+  title: "Şüpheli komut satırı"
+  description: "Şüpheli belirteç tespit edildi: {data.cmdline}"
+  dedup: "{agent_id}|cmd|{data.cmdline}"
+
+- id: port-scan
+  event_type: port_scan
+  severity: medium
+  conditions:
+    - field: data.ports
+      op: len_gte
+      value: 10
+  title: "Port tarama tespiti"
+  description: "Kaynak={data.source_ip} hedef={data.target}"
+  dedup: "{agent_id}|portscan|{data.source_ip}|{data.target}"
+
+- id: brute-force
+  event_type: auth_failure
+  severity: high
+  window:
+    seconds: 60
+    threshold: 5
+    group_by: agent_id
+  title: "Brute-force şüphesi: {window_count} başarısız giriş / 60s"
+  description: "Kaynak={data.source_ip}, kullanıcı={data.username}, ajan={agent_id}"
+  dedup: "{agent_id}|bruteforce"
+
+- id: vuln
+  event_type: vuln_finding
+  id_prefix: "vuln-"
+  id_field: data.type
+  severity_field: data.severity
+  title: "{data.type} zafiyeti bulundu"
+  description: "url={data.url} param={data.param} payload={data.payload} kanit={data.evidence}"
+  dedup: "vuln|{data.type}|{data.url}|{data.param}"
+
+- id: ml-phishing
+  event_type: phishing
+  severity: high
+  title: "ML: Phishing URL tespit edildi"
+  description: "url={data.url} skor={data.score}"
+  dedup: "phishing|{data.url}"
+
+- id: ml-nids-anomaly
+  event_type: ml_anomaly
+  severity: high
+  title: "ML: Ağ anomalisi (olası saldırı)"
+  description: "kaynak={data.source} skor={data.score} {data.note}"
+  dedup: "mlnids|{data.source}"
+
+- id: file-integrity
+  event_type: file_change
+  severity: medium
+  title: "Dosya bütünlüğü değişikliği ({data.action})"
+  description: "yol={data.path} eylem={data.action} hash={data.hash}"
+  dedup: "fim|{data.path}|{data.action}"

@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-dev/
+venv/
+*.egg-info/
+
+# Test / lint caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Data / DB
+server/data/
+*.db
+*.sqlite3
+
+# Secrets / certificates (Phase 2)
+*.pem
+*.key
+certs/
+agent/secrets/
+server/keys/
+.env
+
+# ML generated artifacts (Phase 4)
+ml/models/
+ml/data/
+lab/**/lab.db
+
+# FIM / auth demo artifacts
+lab/watched/
+lab/auth.log
+
+# Graphify knowledge-graph output (local only)
+graphify-out/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

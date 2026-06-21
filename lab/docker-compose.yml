@@ -1,0 +1,13 @@
+# Aegis Lab — kurban hedefler (Docker varsa).
+# Bu makinede Docker yoksa lab/vulnerable_app yerel olarak çalıştırılabilir.
+#   docker compose -f lab/docker-compose.yml up -d
+services:
+  juice-shop:
+    image: bkimminich/juice-shop
+    ports:
+      - "3000:3000"
+
+  dvwa:
+    image: vulnerables/web-dvwa
+    ports:
+      - "8081:80"

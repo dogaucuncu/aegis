@@ -1,0 +1,13 @@
+# Aegis — tek "dev" venv: tüm paket bağımlılıkları + test araçları.
+# Kurulum:
+#   py -3.13 -m venv .venv-dev
+#   .\.venv-dev\Scripts\python.exe -m pip install -r requirements-dev.txt -e crypto
+pytest==8.3.4
+httpx==0.28.1
+ruff==0.8.4
+
+-r server/requirements.txt
+-r agent/requirements.txt
+-r scanner/requirements.txt
+-r ml/requirements.txt
+-r lab/vulnerable_app/requirements.txt

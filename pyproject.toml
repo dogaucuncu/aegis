@@ -1,0 +1,19 @@
+# Aegis — geliştirme aracı yapılandırması (ruff lint + format).
+# Paket meta'ları kendi alt dizinlerinde (crypto/pyproject.toml vb.).
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = [".venv", ".venv-dev", "**/.venv", "server/alembic", "ml/models", "ml/data", "certs"]
+
+[tool.ruff.lint]
+# E/F/I: stil + kullanılmayan import + import sırası. UP/B bu kod tabanında (FastAPI
+# Depends defaults, kademeli typing) gürültü üretir; kapsam dışı.
+select = ["E", "F", "I"]
+ignore = ["E501"]  # satır uzunluğu format'a bırakıldı
+
+[tool.ruff.lint.per-file-ignores]
+"lab/vulnerable_app/app.py" = ["S"]  # kasıtlı zafiyetli demo
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning:app", "error::DeprecationWarning:aegis_crypto"]
