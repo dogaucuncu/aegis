@@ -36,8 +36,8 @@ lab/auth.log
 # Graphify knowledge-graph output (local only)
 graphify-out/
 
-# Claude Code local settings
-.claude/settings.local.json
+# Claude Code local settings / tooling (launch configs, local settings, etc.)
+.claude/
 
 # IDE / OS
 .vscode/
