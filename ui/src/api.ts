@@ -1,4 +1,4 @@
-// Aegis SOC sunucusuna REST istemcisi.
+// REST client for the Aegis SOC server.
 const BASE = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
 export interface Alert {

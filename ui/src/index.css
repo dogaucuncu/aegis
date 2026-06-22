@@ -1,6 +1,23 @@
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@300;400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  /* Surfaces */
+  --bg: #070b14;
+  --surface: #0d1424;
+  --surface-2: #111a2e;
+  --border: #1d2942;
+  --border-strong: #2b3a5c;
+  /* Text */
+  --text: #e6edf7;
+  --text-dim: #93a3bd;
+  --text-faint: #5d6e8a;
+  /* Accents */
+  --accent: #38bdf8;
+}
 
 html,
 body,
@@ -10,7 +27,106 @@ body,
 
 body {
   margin: 0;
-  background-color: #020617; /* slate-950 */
-  color: #e2e8f0; /* slate-200 */
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  font-family: "Fira Sans", system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Layered radial glow over a deep base — gives the page depth without busy gradients */
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(900px 500px at 12% -8%, rgba(56, 189, 248, 0.08), transparent 60%),
+    radial-gradient(800px 600px at 100% 0%, rgba(167, 139, 250, 0.06), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Monospace for everything numeric / identifiers — reads like a real ops console */
+.font-mono,
+code,
+.tabular {
+  font-family: "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-feature-settings: "tnum" 1;
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.28);
+  color: #fff;
+}
+
+/* Keyboard focus — visible but on-brand, never removed */
+*:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.7);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Quiet, thin scrollbars that fit the dark theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #243149 transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #243149;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #314163;
+  background-clip: content-box;
+}
+
+@layer components {
+  /* Card surface — faint top sheen + soft elevation so panels feel layered, not flat */
+  .panel {
+    @apply relative rounded-2xl border;
+    border-color: var(--border);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0) 120px),
+      var(--surface);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.03) inset,
+      0 18px 40px -24px rgba(0, 0, 0, 0.8);
+  }
+
+  .panel-header {
+    @apply flex items-center justify-between gap-3 border-b px-5 py-3.5;
+    border-color: var(--border);
+  }
+
+  .panel-title {
+    @apply flex items-center gap-2.5 text-sm font-semibold tracking-tight text-slate-100;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
+  }
+
+  /* Square tinted slot that holds a section icon */
+  .icon-slot {
+    @apply flex shrink-0 items-center justify-center rounded-lg;
+  }
+
+  .table-head {
+    @apply sticky top-0 z-10 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500;
+    background: var(--surface-2);
+    backdrop-filter: blur(6px);
+  }
+
+  .row-hover {
+    @apply transition-colors duration-150 hover:bg-white/[0.025];
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }

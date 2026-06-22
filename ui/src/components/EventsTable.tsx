@@ -1,4 +1,5 @@
 import type { AegisEvent } from "../api";
+import { ServerIcon, LockIcon } from "./icons";
 
 interface Props {
   events: AegisEvent[];
@@ -20,35 +21,51 @@ const TYPE_COLORS: Record<string, string> = {
 
 export function EventsTable({ events }: Props) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60">
-      <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-        <h2 className="font-semibold text-slate-100">Telemetri Akışı</h2>
-        <span className="text-xs text-slate-400">{events.length} olay</span>
+    <div className="panel overflow-hidden">
+      <div className="panel-header">
+        <span className="panel-title">
+          <span className="icon-slot h-7 w-7 bg-sky-500/10 text-sky-300 ring-1 ring-sky-400/20">
+            <ServerIcon size={15} />
+          </span>
+          Telemetri Akışı
+        </span>
+        <span className="font-mono text-xs text-slate-500">{events.length} olay</span>
       </div>
       <div className="max-h-[60vh] overflow-auto">
         <table className="w-full text-left text-sm">
-          <thead className="sticky top-0 bg-slate-900 text-xs uppercase tracking-wider text-slate-500">
+          <thead className="table-head">
             <tr>
-              <th className="px-4 py-2">#</th>
-              <th className="px-4 py-2">Tür</th>
-              <th className="px-4 py-2">Ajan</th>
-              <th className="px-4 py-2">Özet</th>
-              <th className="px-4 py-2">Zaman</th>
+              <th className="px-5 py-2.5">#</th>
+              <th className="px-4 py-2.5">Tür</th>
+              <th className="px-4 py-2.5">Ajan</th>
+              <th className="px-4 py-2.5">Özet</th>
+              <th className="px-4 py-2.5">Zaman</th>
             </tr>
           </thead>
           <tbody>
+            {events.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-12 text-center text-slate-600">
+                  Henüz telemetri yok.
+                </td>
+              </tr>
+            )}
             {events.map((e) => (
-              <tr key={e.id} className="border-t border-slate-800/60 hover:bg-slate-800/30">
-                <td className="px-4 py-2 font-mono text-xs text-slate-500">{e.id}</td>
-                <td className={`px-4 py-2 font-mono text-xs ${TYPE_COLORS[e.event_type] ?? "text-slate-300"}`}>
-                  {e.signed && <span title="Güvenli (imzalı) kanal">🔒 </span>}
-                  {e.event_type}
+              <tr key={e.id} className="row-hover border-t border-white/[0.04]">
+                <td className="px-5 py-2.5 font-mono text-xs text-slate-500">{e.id}</td>
+                <td
+                  className={`px-4 py-2.5 font-mono text-xs ${TYPE_COLORS[e.event_type] ?? "text-slate-300"}`}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    {e.signed && (
+                      <LockIcon size={12} className="text-emerald-400" aria-label="Güvenli (imzalı) kanal" />
+                    )}
+                    {e.event_type}
+                  </span>
                 </td>
-                <td className="px-4 py-2 text-slate-300">{e.agent_id}</td>
-                <td className="px-4 py-2 font-mono text-xs text-slate-400">
-                  {summarize(e)}
-                </td>
-                <td className="px-4 py-2 text-slate-400">{fmt(e.timestamp)}</td>
+                <td className="px-4 py-2.5 text-slate-300">{e.agent_id}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-slate-400">{summarize(e)}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-slate-400">{fmt(e.timestamp)}</td>
               </tr>
             ))}
           </tbody>
@@ -65,7 +82,8 @@ function summarize(e: AegisEvent): string {
   if (e.event_type === "auth_failure") return `${d.username ?? "?"} @ ${d.source_ip ?? "?"}`;
   if (e.event_type === "port_scan") return `${d.source_ip ?? "?"} → ${d.target ?? "?"}`;
   if (e.event_type === "open_port") return `${d.host ?? "?"}:${d.port} (${d.service ?? "?"})`;
-  if (e.event_type === "vuln_finding") return `${String(d.type ?? "").toUpperCase()} @ ${d.url ?? "?"} [${d.param ?? ""}]`;
+  if (e.event_type === "vuln_finding")
+    return `${String(d.type ?? "").toUpperCase()} @ ${d.url ?? "?"} [${d.param ?? ""}]`;
   if (e.event_type === "file_change") return `${d.action ?? "?"}: ${d.path ?? "?"}`;
   return JSON.stringify(d).slice(0, 80);
 }

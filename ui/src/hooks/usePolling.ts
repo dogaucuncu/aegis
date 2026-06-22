@@ -7,7 +7,7 @@ interface PollingState<T> {
   refresh: () => void;
 }
 
-// Bir async fetch fonksiyonunu sabit aralıkla yeniden çalıştırır.
+// Re-runs an async fetch function at a fixed interval.
 export function usePolling<T>(fn: () => Promise<T>, intervalMs = 4000): PollingState<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-// Bir SSE (EventSource) bağlantısı açar ve "alert" olaylarında callback'i çağırır.
+// Opens an SSE (EventSource) connection and calls the callback on "alert" events.
 export function useSSE(url: string, eventName: string, onMessage: (data: unknown) => void) {
   const cbRef = useRef(onMessage);
   cbRef.current = onMessage;
@@ -11,7 +11,7 @@ export function useSSE(url: string, eventName: string, onMessage: (data: unknown
       try {
         cbRef.current(JSON.parse(e.data));
       } catch {
-        /* yoksay */
+        /* ignore */
       }
     };
     es.addEventListener(eventName, handler as EventListener);
