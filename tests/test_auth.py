@@ -1,8 +1,8 @@
-"""API anahtarı auth testleri (WP4)."""
+"""API key auth tests (WP4)."""
 
 
 def test_auth_off_by_default(client):
-    # AEGIS_API_KEYS tanımlı değil -> ingest anahtarsız çalışır (demo uyumu)
+    # AEGIS_API_KEYS not set -> ingest works without a key (demo compatibility)
     r = client.post("/api/ingest", json={"events": [
         {"agent_id": "t", "event_type": "process", "data": {"name": "x"}}
     ]})
@@ -18,14 +18,14 @@ def test_auth_enforced_when_configured(client, monkeypatch):
     assert client.post("/api/ingest", json=body).status_code == 401
     assert client.post("/api/ingest", json=body, headers={"X-API-Key": "wrong"}).status_code == 401
     assert client.post("/api/ingest", json=body, headers={"X-API-Key": "secret123"}).status_code == 200
-    # Okuma uçları açık kalır (dashboard polling)
+    # Read endpoints stay open (dashboard polling)
     assert client.get("/api/alerts").status_code == 200
 
 
 def test_alert_status_change_requires_key(client, monkeypatch):
     from app import config
 
-    # önce bir alarm üret (auth kapalıyken)
+    # first produce an alert (while auth is off)
     client.post("/api/ingest", json={"events": [
         {"agent_id": "t", "event_type": "process", "data": {"name": "mimikatz.exe"}}
     ]})

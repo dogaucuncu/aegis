@@ -1,34 +1,34 @@
-# Aegis — Tehdit Modeli (özet)
+# Aegis — Threat Model (summary)
 
-Eğitim/portföy amaçlı bir mini-SOC. Aşağıda korunan varlıklar, saldırgan yetenekleri,
-karşı önlemler ve bilinen sınırlar özetlenir.
+A mini-SOC for educational/portfolio purposes. Below is a summary of the protected assets,
+attacker capabilities, countermeasures and known limitations.
 
-## Varlıklar
-- Telemetri olayları ve alarmlar (bütünlük + kaynak kanıtı kritik).
-- Ajan↔sunucu kanalı (gizlilik + kimlik).
-- Tespit kuralları ve ML modelleri.
+## Assets
+- Telemetry events and alerts (integrity + provenance are critical).
+- Agent↔server channel (confidentiality + identity).
+- Detection rules and ML models.
 
-## Saldırgan modeli
-- **Ağ üzerindeki pasif/aktif saldırgan:** trafiği dinler, yakalar, yeniden gönderir.
-- **Yetkisiz istemci:** API'ye sahte olay enjekte etmeye çalışır.
-- **İçeriden kurcalama:** depolanmış logları geçmişe dönük değiştirmeye çalışır.
+## Attacker model
+- **Passive/active attacker on the network:** sniffs, captures and replays traffic.
+- **Unauthorized client:** tries to inject forged events into the API.
+- **Insider tampering:** tries to retroactively modify stored logs.
 
-## Önlemler (uygulandı)
-| Tehdit | Önlem |
-|--------|-------|
-| Sahte olay enjeksiyonu | API anahtarı auth (`X-API-Key`) + güvenli uçta Ed25519 imza |
-| Dinleme (gizlilik) | AES-256-GCM (ECDH+HKDF türetilmiş anahtar) + opsiyonel mTLS |
-| Anahtar sızıntısı (at-rest AES) | AES diskte tutulmaz; X25519 ECDH ile türetilir |
-| Yeniden gönderme (replay) | Zaman damgası tazeliği (±5 dk) + nonce tekrar reddi |
-| Log kurcalama | SHA-256 hash-zinciri (tamper-evident) + imza denetimi |
-| İstek seli (DoS) | Per-IP rate limit (yapılandırılabilir) |
-| Yetkisiz origin | CORS allowlist |
+## Countermeasures (implemented)
+| Threat | Countermeasure |
+|--------|----------------|
+| Forged event injection | API key auth (`X-API-Key`) + Ed25519 signature on the secure endpoint |
+| Eavesdropping (confidentiality) | AES-256-GCM (ECDH+HKDF derived key) + optional mTLS |
+| Key leakage (at-rest AES) | AES is not stored on disk; derived via X25519 ECDH |
+| Replay | Timestamp freshness (±5 min) + nonce replay rejection |
+| Log tampering | SHA-256 hash chain (tamper-evident) + signature verification |
+| Request flood (DoS) | Per-IP rate limit (configurable) |
+| Unauthorized origin | CORS allowlist |
 
-## Bilinen sınırlar / kapsam dışı
-- mTLS canlı uçtan uca, geliştirme makinesindeki TLS araya-girmesi (Norton) nedeniyle
-  yalnızca bellek-içi testle doğrulandı (`scripts/mtls_selftest.py`).
-- Hash-zinciri global; çok-süreçli/dağıtık dağıtımda satır-bazlı DB kilidi gerekir
-  (tek-süreçte threading kilidi ile serileştirilir).
-- ML NIDS, gerçek canlı akış özelliklerini değil, akış-vektörlerini skorlar (flow toplayıcı yok).
-- Ofansif tarayıcı yalnızca yetkili/lab hedefleri içindir.
-- Anahtar rotasyonu, gizli-yönetim vault'u ve denetim-kaydı imzalama anahtarı koruması kapsam dışı.
+## Known limitations / out of scope
+- Live end-to-end mTLS was verified only with an in-memory test (`scripts/mtls_selftest.py`)
+  due to TLS interception (Norton) on the development machine.
+- The hash chain is global; a multi-process/distributed deployment requires row-level DB locking
+  (serialized with a threading lock in a single process).
+- The ML NIDS scores flow vectors rather than real live-stream features (no flow collector).
+- The offensive scanner is intended only for authorized/lab targets.
+- Key rotation, a secrets-management vault and audit-log signing-key protection are out of scope.

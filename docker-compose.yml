@@ -1,5 +1,5 @@
-# Aegis — konteynerli çalıştırma (Faz 5).
-# NOT: Bu yapılandırma geliştirme makinesinde Docker olmadığından canlı test edilmemiştir.
+# Aegis — containerized run (Phase 5).
+# NOTE: This configuration has not been live-tested since Docker is not available on the dev machine.
 #   docker compose up --build
 services:
   db:

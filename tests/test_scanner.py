@@ -1,4 +1,4 @@
-"""Tarayıcı testleri — yerel sahte hedef üzerinde SQLi/XSS/port tespiti."""
+"""Scanner tests — SQLi/XSS/port detection against a local mock target."""
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -17,10 +17,10 @@ class _Handler(BaseHTTPRequestHandler):
             body = b"SQL error: unrecognized token" if "'" in idv else b"ok"
         elif u.path == "/search":
             q = qs.get("q", [""])[0]
-            body = f"<h2>{q}</h2>".encode()  # kaçışsız yansıma
+            body = f"<h2>{q}</h2>".encode()  # unescaped reflection
         elif u.path == "/redirect":
             self.send_response(302)
-            self.send_header("Location", qs.get("next", [""])[0])  # açık yönlendirme
+            self.send_header("Location", qs.get("next", [""])[0])  # open redirect
             self.end_headers()
             return
         else:

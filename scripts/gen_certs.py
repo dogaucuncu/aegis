@@ -1,11 +1,11 @@
-"""mTLS için kendinden-imzalı CA + sunucu + istemci sertifikaları üretir.
+"""Generates self-signed CA + server + client certificates for mTLS.
 
-Çıktı (certs/):
-  ca.pem / ca.key            kök sertifika otoritesi
-  server.pem / server.key    sunucu (CN=localhost, SAN: localhost,127.0.0.1)
-  client.pem / client.key    ajan istemci sertifikası
+Output (certs/):
+  ca.pem / ca.key            root certificate authority
+  server.pem / server.key    server (CN=localhost, SAN: localhost,127.0.0.1)
+  client.pem / client.key    agent client certificate
 
-Sunucuyu mTLS ile çalıştır:
+Run the server with mTLS:
   uvicorn app.main:app --port 8443 \
     --ssl-keyfile ../certs/server.key --ssl-certfile ../certs/server.pem \
     --ssl-ca-certs ../certs/ca.pem --ssl-cert-reqs 2
@@ -61,7 +61,7 @@ def main():
     _save_key(ca_key, CERTS / "ca.key")
     _save_cert(ca_cert, CERTS / "ca.pem")
 
-    # --- Sunucu ---
+    # --- Server ---
     srv_key = _key()
     srv_cert = (
         x509.CertificateBuilder()
@@ -82,7 +82,7 @@ def main():
     _save_key(srv_key, CERTS / "server.key")
     _save_cert(srv_cert, CERTS / "server.pem")
 
-    # --- İstemci (ajan) ---
+    # --- Client (agent) ---
     cli_key = _key()
     cli_cert = (
         x509.CertificateBuilder()
@@ -97,7 +97,7 @@ def main():
     _save_key(cli_key, CERTS / "client.key")
     _save_cert(cli_cert, CERTS / "client.pem")
 
-    print(f"[gen_certs] Sertifikalar uretildi: {CERTS}")
+    print(f"[gen_certs] Certificates generated: {CERTS}")
     for f in ["ca.pem", "server.pem", "server.key", "client.pem", "client.key"]:
         print(f"  {f}")
 

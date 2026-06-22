@@ -1,6 +1,6 @@
-"""Aegis sunucu yapılandırması.
+"""Aegis server configuration.
 
-Ortam değişkenleriyle override edilebilir; varsayılanlar yerel/SQLite geliştirme içindir.
+Can be overridden via environment variables; the defaults are for local/SQLite development.
 """
 import os
 from pathlib import Path
@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv("AEGIS_DATA_DIR", str(BASE_DIR / "data")))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-# Faz 0: SQLite. Faz 5'te PostgreSQL'e geçiş için sadece bu URL değişecek.
+# Phase 0: SQLite. To switch to PostgreSQL in Phase 5, only this URL will change.
 DATABASE_URL = os.getenv(
     "AEGIS_DATABASE_URL", f"sqlite:///{(DATA_DIR / 'aegis.db').as_posix()}"
 )
@@ -22,16 +22,16 @@ def _split(env: str, default: str) -> list[str]:
     return [x.strip() for x in os.getenv(env, default).split(",") if x.strip()]
 
 
-# WP3: tabloları otomatik oluştur (dev/test). Üretimde 0 + Alembic kullan.
+# WP3: auto-create tables (dev/test). In production use 0 + Alembic.
 AUTO_CREATE = os.getenv("AEGIS_AUTO_CREATE", "1") != "0"
 
-# WP4: CORS izinli origin'ler.
+# WP4: CORS allowed origins.
 CORS_ORIGINS = _split(
     "AEGIS_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
 )
 
-# WP4: API anahtarları (virgüllü). Boş ise auth KAPALI (demo uyumu) — uyarı loglanır.
+# WP4: API keys (comma-separated). If empty, auth is DISABLED (demo compatibility) — a warning is logged.
 API_KEYS = set(_split("AEGIS_API_KEYS", ""))
 
-# WP4: dakika başına istek limiti (0 = kapalı).
+# WP4: requests-per-minute limit (0 = disabled).
 RATE_LIMIT_PER_MIN = int(os.getenv("AEGIS_RATE_LIMIT_PER_MIN", "0"))

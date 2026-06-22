@@ -1,4 +1,4 @@
-"""Aegis ajanı — periyodik toplama döngüsü (düz veya güvenli mod)."""
+"""Aegis agent — periodic collection loop (plain or secure mode)."""
 import argparse
 import logging
 import time
@@ -22,7 +22,7 @@ def load_config(path: str) -> dict:
 
 
 def build_sender(cfg: dict, server_url: str, agent_id: str):
-    """mode=secure ise imzalı+şifreli gönderici, değilse düz gönderici."""
+    """Signed+encrypted sender if mode=secure, otherwise the plain sender."""
     if cfg.get("mode") == "secure":
         from .secure_sender import SecureSender
 
@@ -42,7 +42,7 @@ def build_sender(cfg: dict, server_url: str, agent_id: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Aegis uç nokta ajanı")
+    parser = argparse.ArgumentParser(description="Aegis endpoint agent")
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--server")
     parser.add_argument("--agent-id")
@@ -61,16 +61,16 @@ def main():
     sender = build_sender(cfg, server_url, agent_id)
     mode = cfg.get("mode", "plain")
 
-    log.info("%s -> %s (mod=%s, her %ss)", agent_id, server_url, mode, interval)
+    log.info("%s -> %s (mode=%s, every %ss)", agent_id, server_url, mode, interval)
     while True:
-        # Toplama döngüsü dayanıklı olmalı: tek bir tur hatası ajanı çökertmemeli.
+        # The collection loop must be resilient: a single failed round must not crash the agent.
         try:
             events = collector.collect()
             sent = sender.send(events)
             if sent:
-                log.info("%s olay gönderildi", sent)
+                log.info("%s events sent", sent)
         except Exception:
-            log.exception("toplama/gönderme turu başarısız")
+            log.exception("collection/send round failed")
         time.sleep(interval)
 
 

@@ -1,4 +1,4 @@
-"""SQLAlchemy motoru, oturum fabrikası ve Base."""
+"""SQLAlchemy engine, session factory and Base."""
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -11,7 +11,7 @@ Base = declarative_base()
 
 
 def get_db():
-    """FastAPI dependency: istek başına bir DB oturumu."""
+    """FastAPI dependency: one DB session per request."""
     db = SessionLocal()
     try:
         yield db

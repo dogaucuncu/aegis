@@ -1,4 +1,4 @@
-"""Düz telemetri alım ucu (Faz 0/1 uyumlu, şifresiz — yerel demo için)."""
+"""Plain telemetry ingestion endpoint (Phase 0/1 compatible, unencrypted — for local demo)."""
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 

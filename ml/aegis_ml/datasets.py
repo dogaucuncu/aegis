@@ -1,8 +1,8 @@
-"""Hibrit veri seti yükleyici: gerçek veri varsa onu, yoksa sentetiği kullanır.
+"""Hybrid dataset loader: uses real data if available, otherwise synthetic.
 
-Gerçek veri (opsiyonel):
-  ml/data/phishing.csv         sütunlar: url,label (1=phishing, 0=benign)
-  ml/data/nsl_kdd_train.txt    NSL-KDD formatı (numeric alt küme kullanılır)
+Real data (optional):
+  ml/data/phishing.csv         columns: url,label (1=phishing, 0=benign)
+  ml/data/nsl_kdd_train.txt    NSL-KDD format (a numeric subset is used)
 """
 from pathlib import Path
 from typing import List, Tuple
@@ -15,7 +15,7 @@ from . import features
 DATA = Path(__file__).resolve().parent.parent / "data"
 _RNG = np.random.default_rng(42)
 
-# NSL-KDD 41 sütun adı (numeric alt kümeyi seçmek için)
+# NSL-KDD 41 column names (to select the numeric subset)
 _NSL_COLS = [
     "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes",
     "land", "wrong_fragment", "urgent", "hot", "num_failed_logins", "logged_in",
@@ -43,7 +43,7 @@ def load_nids() -> Tuple[pd.DataFrame, np.ndarray, List[str], str]:
 
 def _synthetic_nids(n: int = 2000) -> Tuple[pd.DataFrame, np.ndarray, List[str], str]:
     half = n // 2
-    # Normal trafik: düşük bayt/sayım, düşük hata oranı, yüksek same_srv_rate
+    # Normal traffic: low bytes/count, low error rate, high same_srv_rate
     normal = {
         "duration": _RNG.exponential(2, half),
         "src_bytes": _RNG.normal(500, 150, half).clip(0),
@@ -54,7 +54,7 @@ def _synthetic_nids(n: int = 2000) -> Tuple[pd.DataFrame, np.ndarray, List[str],
         "same_srv_rate": _RNG.beta(9, 1, half),
         "dst_host_count": _RNG.normal(40, 15, half).clip(0),
     }
-    # Saldırı trafiği: yüksek sayım/hata (tarama/DoS imzası), düşük same_srv_rate
+    # Attack traffic: high count/error (scan/DoS signature), low same_srv_rate
     attack = {
         "duration": _RNG.exponential(0.5, half),
         "src_bytes": _RNG.normal(120, 80, half).clip(0),
@@ -69,7 +69,7 @@ def _synthetic_nids(n: int = 2000) -> Tuple[pd.DataFrame, np.ndarray, List[str],
         [pd.DataFrame(normal), pd.DataFrame(attack)], ignore_index=True
     )[features.NIDS_FEATURES]
     y = np.concatenate([np.zeros(half, int), np.ones(half, int)])
-    # Gerçekçilik: ~%7 etiket gürültüsü (mükemmel ayrışmayı önler)
+    # Realism: ~7% label noise (prevents perfect separation)
     flip = _RNG.random(len(y)) < 0.07
     y = np.where(flip, 1 - y, y)
     return df, y, features.NIDS_FEATURES, "synthetic"
@@ -104,7 +104,7 @@ def _synthetic_phishing(n: int = 1000) -> pd.DataFrame:
     for _ in range(half):
         d = _RNG.choice(_GOOD_DOMAINS)
         p = _RNG.choice(_GOOD_PATHS)
-        # %20 örtüşen vaka: meşru ama "login/signin" içeren benign (örn. accounts.google.com/login)
+        # 20% overlapping case: legitimate but "login/signin"-containing benign (e.g. accounts.google.com/login)
         if _RNG.random() < 0.2:
             sub = _RNG.choice(["accounts", "signin", "secure", "login"])
             rows.append((f"https://{sub}.{d}/login", 0))
@@ -121,12 +121,12 @@ def _synthetic_phishing(n: int = 1000) -> pd.DataFrame:
             brand = _RNG.choice(["paypal", "apple", "bankofamerica", "ebay", "amazon"])
             url = f"http://{brand}.{word}.{_RNG.choice(_BAD_WORDS)}.{tld}/index"
         else:
-            # %15 örtüşen vaka: daha "temiz" görünen phishing (https + .com)
+            # 15% overlapping case: phishing that looks "cleaner" (https + .com)
             brand = _RNG.choice(["paypal", "apple", "secure-bank"])
             url = f"https://{brand}-{word}.com/{word}"
         rows.append((url, 1))
     df = pd.DataFrame(rows, columns=["url", "label"])
-    # Gerçekçilik: ~%4 etiket gürültüsü
+    # Realism: ~4% label noise
     flip = _RNG.random(len(df)) < 0.04
     df.loc[flip, "label"] = 1 - df.loc[flip, "label"]
     return df

@@ -1,8 +1,8 @@
-# Aegis Lab — kurban hedefler
+# Aegis Lab — victim targets
 
-⚠️ Yalnızca yerel/eğitim amaçlıdır. Bu hedefler kasıtlı zafiyetlidir.
+⚠️ For local/educational use only. These targets are intentionally vulnerable.
 
-## Seçenek A — Yerel zafiyetli uygulama (Docker'sız)
+## Option A — Local vulnerable app (without Docker)
 ```powershell
 cd F:\aegis\lab\vulnerable_app
 py -3.13 -m venv .venv
@@ -10,21 +10,21 @@ py -3.13 -m venv .venv
 pip install -r requirements.txt
 python app.py            # http://127.0.0.1:5001
 ```
-Zafiyetli uçlar:
-- `GET /user?id=1` → SQL injection (hata-tabanlı + boolean)
-- `GET /search?q=test` → yansıyan XSS
+Vulnerable endpoints:
+- `GET /user?id=1` → SQL injection (error-based + boolean)
+- `GET /search?q=test` → reflected XSS
 
-## Seçenek B — Docker kurban konteynerleri
+## Option B — Docker victim containers
 ```powershell
 docker compose -f lab/docker-compose.yml up -d
 # OWASP Juice Shop: http://127.0.0.1:3000
 # DVWA:            http://127.0.0.1:8081
 ```
 
-## Tarama
+## Scanning
 ```powershell
 cd F:\aegis\scanner
 .\.venv\Scripts\Activate.ps1
 python -m aegis_scanner.main --target 127.0.0.1
-# Bulgular -> http://127.0.0.1:8000/api/alerts ve dashboard
+# Findings -> http://127.0.0.1:8000/api/alerts and the dashboard
 ```

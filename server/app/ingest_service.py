@@ -1,6 +1,6 @@
-"""Olay kalıcılaştırma servisi: hash-zinciri + kural değerlendirmesi.
+"""Event persistence service: hash chain + rule evaluation.
 
-Hem düz (`/api/ingest`) hem güvenli (`/api/ingest/secure`) yollar bunu kullanır.
+Both the plain (`/api/ingest`) and secure (`/api/ingest/secure`) paths use this.
 """
 import datetime as dt
 import threading
@@ -11,9 +11,9 @@ from sqlalchemy.orm import Session
 from . import integrity, models, rules
 from .utils import now_utc
 
-# Hash-zinciri global; eşzamanlı append'lerin zinciri çatallamasını önlemek için
-# kritik bölümü (son hash'i oku → ekle → commit) süreç-içi kilitle serileştir.
-# Çok-süreçli/PG dağıtımında satır-bazlı DB kilidi (SELECT FOR UPDATE) gerekir.
+# The hash chain is global; to prevent concurrent appends from forking the chain,
+# serialize the critical section (read last hash → append → commit) with an in-process lock.
+# A multi-process/PG deployment requires a row-level DB lock (SELECT FOR UPDATE).
 _chain_lock = threading.Lock()
 
 
@@ -30,19 +30,19 @@ def persist_events(
     events: List[Dict[str, Any]],
     signatures: Optional[List[Optional[str]]] = None,
 ) -> Tuple[int, int]:
-    """events: [{agent_id, event_type, timestamp, data}, ...] döndürür (ingested, alerts)."""
+    """events: [{agent_id, event_type, timestamp, data}, ...]; returns (ingested, alerts)."""
     with _chain_lock:
         return _append_locked(db, events, signatures)
 
 
 def _chain_head(db: Session) -> models.ChainHead:
-    """Zincir başını döndürür; PostgreSQL'de satırı kilitler (FOR UPDATE)."""
+    """Returns the chain head; locks the row on PostgreSQL (FOR UPDATE)."""
     q = db.query(models.ChainHead).filter_by(id=1)
     if db.bind.dialect.name == "postgresql":
         q = q.with_for_update()
     head = q.first()
     if head is None:
-        # İlk kez: mevcut son olaydan süreklilik için bootstrap.
+        # First time: bootstrap from the current last event for continuity.
         last = db.query(models.Event).order_by(models.Event.id.desc()).first()
         head = models.ChainHead(id=1, last_hash=last.hash if last else None)
         db.add(head)
@@ -93,7 +93,7 @@ def _append_locked(
                 .first()
             )
             if existing is not None:
-                # Korelasyon: aynı AÇIK alarmı tekrarlama, görülme sayısını artır.
+                # Correlation: do not duplicate the same OPEN alert, increment the seen count.
                 existing.count += 1
                 existing.last_seen = now_utc()
                 existing.event_id = obj.id

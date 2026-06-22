@@ -1,7 +1,7 @@
-"""Pytest fixtures ve yol ayarları.
+"""Pytest fixtures and path setup.
 
-Tüm Aegis paketleri (server/ml/scanner/agent) tek dev venv'inde test edilir.
-aegis_crypto editable kurulu olmalı.
+All Aegis packages (server/ml/scanner/agent) are tested in a single dev venv.
+aegis_crypto must be installed as editable.
 """
 import os
 import sys
@@ -14,14 +14,14 @@ ROOT = Path(__file__).resolve().parent.parent
 for pkg_dir in ["server", "ml", "scanner", "agent"]:
     sys.path.insert(0, str(ROOT / pkg_dir))
 
-# Server'ı izole bir geçici SQLite ile çalıştır (app import edilmeden ÖNCE).
+# Run the server with an isolated temporary SQLite (BEFORE the app is imported).
 _TMP_DB = Path(tempfile.gettempdir()) / "aegis_test.db"
 os.environ["AEGIS_DATABASE_URL"] = f"sqlite:///{_TMP_DB.as_posix()}"
 
 
 @pytest.fixture()
 def client():
-    """Her test için temiz şemalı FastAPI TestClient."""
+    """A FastAPI TestClient with a clean schema for each test."""
     import app.main as main
     from app.database import Base, engine
     from fastapi.testclient import TestClient

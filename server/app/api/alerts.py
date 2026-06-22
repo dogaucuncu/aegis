@@ -1,4 +1,4 @@
-"""Alarm sorgulama ve durum güncelleme uçları."""
+"""Alert query and status update endpoints."""
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -34,7 +34,7 @@ def list_alerts(
 def update_status(alert_id: int, status: str, db: Session = Depends(get_db)):
     alert = db.get(models.Alert, alert_id)
     if not alert:
-        raise HTTPException(status_code=404, detail="Alarm bulunamadı")
+        raise HTTPException(status_code=404, detail="Alert not found")
     alert.status = status
     db.commit()
     db.refresh(alert)

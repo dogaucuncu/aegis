@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aegis-crypto"
 version = "0.1.0"
-description = "Aegis paylaşılan kriptografi yardımcıları (Ed25519 imza, AES-GCM)"
+description = "Aegis shared cryptography utilities (Ed25519 signing, AES-GCM)"
 requires-python = ">=3.10"
 dependencies = ["cryptography>=42"]
 

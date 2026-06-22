@@ -1,12 +1,12 @@
-"""Kayıtlı ajan anahtarları + sunucu X25519 çifti (ECDH).
+"""Registered agent keys + server X25519 pair (ECDH).
 
-Sunucuda:
-  keys/server_x25519.key/.pub        -> sunucunun statik X25519 çifti (ilk çalışmada üretilir)
-  keys/agents/<id>.pub               -> ajan Ed25519 açık anahtarı (imza doğrulama)
-  keys/agents/<id>.x25519.pub        -> ajan X25519 açık anahtarı (ECDH)
+On the server:
+  keys/server_x25519.key/.pub        -> the server's static X25519 pair (generated on first run)
+  keys/agents/<id>.pub               -> agent Ed25519 public key (signature verification)
+  keys/agents/<id>.x25519.pub        -> agent X25519 public key (ECDH)
 
-AES anahtarı diskte tutulmaz; ECDH(sunucu_priv, ajan_pub) + HKDF ile türetilir.
-Anahtarlar `scripts/provision_agent.py` ile üretilir.
+The AES key is not stored on disk; it is derived via ECDH(server_priv, agent_pub) + HKDF.
+The keys are generated with `scripts/provision_agent.py`.
 """
 from typing import Optional
 
@@ -20,7 +20,7 @@ KEYS_DIR = SERVER_KEYS_DIR / "agents"
 
 
 def server_x25519_private():
-    """Sunucunun statik X25519 özel anahtarı; yoksa üretilir (priv+pub yazılır)."""
+    """The server's static X25519 private key; generated if absent (priv+pub written)."""
     priv_path = SERVER_KEYS_DIR / "server_x25519.key"
     if not priv_path.exists():
         SERVER_KEYS_DIR.mkdir(parents=True, exist_ok=True)
@@ -39,7 +39,7 @@ def load_agent_pubkey(agent_id: str) -> Optional[Ed25519PublicKey]:
 
 
 def derive_agent_aes(agent_id: str) -> Optional[bytes]:
-    """Ajanın X25519 açık anahtarı + sunucu özel anahtarından AES anahtarı türetir."""
+    """Derives the AES key from the agent's X25519 public key + the server's private key."""
     pub_path = KEYS_DIR / f"{agent_id}.x25519.pub"
     if not pub_path.exists():
         return None

@@ -1,6 +1,6 @@
-"""Toplanan olayları Aegis sunucusuna gönderir.
+"""Sends collected events to the Aegis server.
 
-Faz 0: düz HTTP. Faz 2'de mTLS + AES-GCM + imza eklenecek (aegis-crypto).
+Phase 0: plain HTTP. mTLS + AES-GCM + signing will be added in Phase 2 (aegis-crypto).
 """
 from typing import Dict, List
 

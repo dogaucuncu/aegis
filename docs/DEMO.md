@@ -1,47 +1,47 @@
-# Aegis — Demo Kılavuzu (GIF/ekran görüntüsü kaydı için)
+# Aegis — Demo Guide (for recording a GIF/screenshot)
 
-Bu kılavuz, dört SOC alanını + sertleştirme özelliklerini tek akışta gösterir.
-Ekran kaydı için: **Windows** → `Win+G` (Xbox Game Bar) veya [ScreenToGif](https://www.screentogif.com/).
-Kaydı `docs/screenshots/` altına koyabilirsiniz.
+This guide showcases the four SOC domains + hardening features in a single flow.
+For screen recording: **Windows** → `Win+G` (Xbox Game Bar) or [ScreenToGif](https://www.screentogif.com/).
+You can save the recording under `docs/screenshots/`.
 
-## Ön koşul (tek seferlik)
+## Prerequisite (one-time)
 ```powershell
-# Her modül için venv + bağımlılıklar (bkz. README), ve ML modelleri:
+# venv + dependencies for each module (see README), and the ML models:
 cd F:\aegis\ml
-python scripts\..\..\scripts\fetch_datasets.py   # (ops.) gerçek veri
+python scripts\..\..\scripts\fetch_datasets.py   # (opt.) real data
 python -m aegis_ml.train
 ```
 
-## Tek komutla tam demo
+## Full demo with a single command
 ```powershell
 F:\aegis\scripts\demo.ps1
 ```
-Servisleri başlatır (SOC 8000 · ML 8001 · Lab 5001 · UI 5173), dört alanı doldurur,
-kripto kurcalama tetikler ve dashboard'u açar.
+Starts the services (SOC 8000 · ML 8001 · Lab 5001 · UI 5173), populates the four domains,
+triggers crypto tampering and opens the dashboard.
 
-## Demo senaryoları (kaydederken anlatılacaklar)
-1. **Blue (tespit):** `seed_demo` → dashboard'da brute-force, şüpheli komut/süreç alarmları.
-   Aynı brute-force tekrarı tek alarmda **×N** sayacıyla toplanır (korelasyon/dedup).
-2. **Red (ofansif):** scanner → **SQLi · XSS · Open-Redirect** + açık portlar; "Tarama & Varlıklar"
-   panelinde görünür.
-3. **ML:** `ml_demo` → "ML Tespitleri" panelinde phishing (skor ~0.94) + NIDS anomali (~0.98).
-4. **Kripto:** `tamper_demo` ile bir log kaydı değiştirilince **"⚠️ Kurcalama!"** rozeti +
-   `/api/crypto/verify-signatures` geçersiz imzayı raporlar.
-5. **Gerçek-zaman:** Yeni alarm geldiğinde sayfa **SSE** ile anında güncellenir → başlıkta "⚡ canlı".
-6. **Güvenli ajan + FIM/auth:** ajanı `--config config.secure.yaml` ile çalıştırıp
-   `lab/watched/critical.conf`'u değiştir → **file-integrity** alarmı; `lab/auth.log`'a
-   başarısız giriş satırı ekle → **brute-force** alarmı (imzalı/şifreli kanaldan).
+## Demo scenarios (what to narrate while recording)
+1. **Blue (detection):** `seed_demo` → brute-force, suspicious command/process alerts on the dashboard.
+   Repeated brute-force is aggregated into a single alert with an **×N** counter (correlation/dedup).
+2. **Red (offensive):** scanner → **SQLi · XSS · Open-Redirect** + open ports; shown in the
+   "Scan & Assets" panel.
+3. **ML:** `ml_demo` → phishing (score ~0.94) + NIDS anomaly (~0.98) in the "ML Detections" panel.
+4. **Crypto:** when a log record is altered via `tamper_demo`, a **"⚠️ Tampered!"** badge +
+   `/api/crypto/verify-signatures` reports the invalid signature.
+5. **Real-time:** when a new alert arrives the page updates instantly via **SSE** → "⚡ live" in the header.
+6. **Secure agent + FIM/auth:** run the agent with `--config config.secure.yaml` and
+   modify `lab/watched/critical.conf` → **file-integrity** alert; add a failed login line to
+   `lab/auth.log` → **brute-force** alert (over the signed/encrypted channel).
 
-## Manuel adım adım
+## Manual step-by-step
 ```powershell
-# 1) Servisler (4 ayrı pencere) — veya scripts\start_all.ps1
+# 1) Services (4 separate windows) — or scripts\start_all.ps1
 # 2) Blue:  python scripts\seed_demo.py
 # 3) Red:   cd scanner; python -m aegis_scanner.main --target 127.0.0.1
 # 4) ML:    python scripts\ml_demo.py
-# 5) Kripto: python scripts\tamper_demo.py --id 1   (sonra /api/integrity/verify)
+# 5) Crypto: python scripts\tamper_demo.py --id 1   (then /api/integrity/verify)
 # 6) FIM/auth: cd agent; python -m aegis_agent.main --config config.secure.yaml
 ```
 
-## Önerilen kayıt çerçevesi
-- Dashboard üst kartlar (alarm sayıları + 🔒 bütünlük), Önem Dağılımı çubuğu,
-  Tarama & Varlıklar + ML Tespitleri panelleri, Alarmlar tablosu (×N + durum), Telemetri akışı (🔒 secure).
+## Suggested recording frame
+- Dashboard top cards (alert counts + 🔒 integrity), Severity Distribution bar,
+  Scan & Assets + ML Detections panels, Alerts table (×N + status), Telemetry stream (🔒 secure).

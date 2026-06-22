@@ -1,4 +1,4 @@
-"""Olay sorgulama uçları + log bütünlüğü doğrulama."""
+"""Event query endpoints + log integrity verification."""
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -27,7 +27,7 @@ def list_events(
 
 @router.get("/integrity/verify", response_model=schemas.IntegrityResult)
 def verify_integrity(db: Session = Depends(get_db)):
-    """Tüm hash-zincirini baştan hesaplayıp kurcalama olup olmadığını raporlar."""
+    """Recomputes the entire hash chain from the start and reports whether tampering occurred."""
     events = db.query(models.Event).order_by(models.Event.id.asc()).all()
     prev_hash = None
     for ev in events:
@@ -39,11 +39,11 @@ def verify_integrity(db: Session = Depends(get_db)):
                 total_events=len(events),
                 valid=False,
                 broken_at_event_id=ev.id,
-                message=f"Zincir kırıldı: event #{ev.id} kurcalanmış olabilir.",
+                message=f"Chain broken: event #{ev.id} may have been tampered with.",
             )
         prev_hash = ev.hash
     return schemas.IntegrityResult(
         total_events=len(events),
         valid=True,
-        message="Tüm log zinciri bütünlüğü doğrulandı.",
+        message="The entire log chain integrity was verified.",
     )

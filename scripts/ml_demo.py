@@ -1,7 +1,7 @@
-"""Faz 4 ML demosu: URL/akış skorlar, tespitleri SOC'a alarm olarak gönderir.
+"""Phase 4 ML demo: scores URLs/flows and sends the detections to the SOC as alerts.
 
-Önce: ML servisi (8001) ve SOC sunucusu (8000) çalışıyor olmalı, modeller eğitilmiş olmalı.
-Kullanım: python scripts/ml_demo.py
+First: the ML service (8001) and the SOC server (8000) must be running, models must be trained.
+Usage: python scripts/ml_demo.py
 """
 import argparse
 
@@ -30,26 +30,26 @@ def main():
 
     detections = []
 
-    print("=== Phishing URL skorlama ===")
+    print("=== Phishing URL scoring ===")
     for url in URLS:
         r = requests.post(args.ml + "/score/url", json={"url": url}, timeout=10).json()
         print(f"  [{r['label']:8}] {r['score']:.3f}  {url}")
         if r["label"] == "phishing":
             detections.append({"event_type": "phishing", "data": {"url": url, "score": r["score"]}})
 
-    print("\n=== NIDS akış skorlama ===")
+    print("\n=== NIDS flow scoring ===")
     for expected, flow in FLOWS:
         r = requests.post(args.ml + "/score/flow", json={"features": flow}, timeout=10).json()
-        print(f"  beklenen={expected:6} -> [{r['label']:6}] {r['score']:.3f}")
+        print(f"  expected={expected:6} -> [{r['label']:6}] {r['score']:.3f}")
         if r["label"] == "attack":
             detections.append({"event_type": "ml_anomaly",
-                               "data": {"source": "flow-demo", "score": r["score"], "note": "yuksek count/serror"}})
+                               "data": {"source": "flow-demo", "score": r["score"], "note": "high count/serror"}})
 
     if detections:
         payload = {"events": [{"agent_id": "ml-engine", **d} for d in detections]}
         resp = requests.post(args.soc + "/api/ingest", json=payload, timeout=10)
         resp.raise_for_status()
-        print(f"\n[rapor] {len(detections)} ML tespiti SOC'a gonderildi -> {args.soc}/api/alerts")
+        print(f"\n[report] {len(detections)} ML detections sent to the SOC -> {args.soc}/api/alerts")
 
 
 if __name__ == "__main__":

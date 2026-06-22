@@ -1,7 +1,7 @@
-"""Kurcalanmaya-dayanıklı log için hash-zinciri yardımcıları.
+"""Hash-chain helpers for a tamper-evident log.
 
-Her olayın hash'i, kendi içeriği + bir önceki olayın hash'i üzerinden hesaplanır.
-Geçmişe dönük herhangi bir değişiklik zinciri kırar. (Faz 2'de Ed25519 imza eklenecek.)
+Each event's hash is computed over its own content + the previous event's hash.
+Any retroactive change breaks the chain. (An Ed25519 signature is added in Phase 2.)
 """
 import datetime as dt
 import hashlib

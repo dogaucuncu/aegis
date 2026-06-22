@@ -1,8 +1,8 @@
-"""Deterministik (kanonik) JSON serileştirme.
+"""Deterministic (canonical) JSON serialization.
 
-İmza ve şifreleme aynı byte dizisi üzerinde çalışmalı; bu yüzden anahtarlar sıralanır
-ve boşluk kullanılmaz. İmzalayan (ajan) ve doğrulayan (sunucu) tarafların ürettiği
-bytes birebir aynı olmalıdır.
+Signing and encryption must operate on the same byte sequence; therefore keys are sorted
+and no whitespace is used. The bytes produced by the signer (agent) and the verifier
+(server) must be byte-for-byte identical.
 """
 import json
 from typing import Any
@@ -15,10 +15,10 @@ def canonical_bytes(obj: Any) -> bytes:
 
 
 def event_canonical(agent_id: str, event_type: str, timestamp: Any, data: Any) -> bytes:
-    """Bir olayın imzalanacak/doğrulanacak kanonik byte gösterimi.
+    """Canonical byte representation of an event to be signed/verified.
 
-    Ajan ve sunucu BU fonksiyonu kullanarak birebir aynı bytes üretir.
-    `timestamp` her iki tarafta da ISO-8601 string olmalıdır.
+    The agent and the server use THIS function to produce byte-for-byte identical bytes.
+    `timestamp` must be an ISO-8601 string on both sides.
     """
     return canonical_bytes(
         {

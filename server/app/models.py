@@ -1,4 +1,4 @@
-"""Veritabanı modelleri: Event (ham telemetri) ve Alert (kural eşleşmeleri)."""
+"""Database models: Event (raw telemetry) and Alert (rule matches)."""
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.types import JSON
 
@@ -7,10 +7,10 @@ from .utils import now_utc
 
 
 class Event(Base):
-    """Ajanlardan gelen tek bir telemetri olayı.
+    """A single telemetry event from the agents.
 
-    `prev_hash` + `hash` alanları, kurcalanmaya-dayanıklı (tamper-evident) bir
-    hash-zinciri oluşturur. Faz 2'de buna Ed25519 imza eklenecek.
+    The `prev_hash` + `hash` fields form a tamper-evident hash chain.
+    An Ed25519 signature is added to this in Phase 2.
     """
 
     __tablename__ = "events"
@@ -24,21 +24,21 @@ class Event(Base):
     prev_hash = Column(String(64), nullable=True)
     hash = Column(String(64), nullable=True, index=True)
 
-    # Faz 2: ajanın Ed25519 imzası (base64). Güvenli modda dolu, düz modda NULL.
+    # Phase 2: the agent's Ed25519 signature (base64). Populated in secure mode, NULL in plain mode.
     signature = Column(String(128), nullable=True)
 
     @property
     def signed(self) -> bool:
-        """Olay güvenli (imzalı) kanaldan mı geldi?"""
+        """Did the event arrive over the secure (signed) channel?"""
         return self.signature is not None
 
 
 class ChainHead(Base):
-    """Hash-zinciri başı (tek satır, id=1).
+    """Hash chain head (single row, id=1).
 
-    Eşzamanlı append'lerde zincirin çatallanmasını önlemek için kilit noktası:
-    PostgreSQL'de `SELECT ... FOR UPDATE` ile satır kilitlenir (çok-süreçli/dağıtık);
-    SQLite'da süreç-içi threading kilidi yeterlidir.
+    The lock point to prevent the chain from forking on concurrent appends:
+    on PostgreSQL the row is locked with `SELECT ... FOR UPDATE` (multi-process/distributed);
+    on SQLite an in-process threading lock is sufficient.
     """
 
     __tablename__ = "chain_head"
@@ -48,9 +48,9 @@ class ChainHead(Base):
 
 
 class SeenNonce(Base):
-    """Replay koruması: işlenmiş güvenli-zarf nonce'ları (TTL'li).
+    """Replay protection: processed secure-envelope nonces (with TTL).
 
-    Aynı AES-GCM nonce'lı bir zarfın yeniden gönderimi (replay) reddedilir.
+    Resending an envelope with the same AES-GCM nonce (replay) is rejected.
     """
 
     __tablename__ = "seen_nonces"
@@ -62,7 +62,7 @@ class SeenNonce(Base):
 
 
 class Alert(Base):
-    """Kural motorunun bir olaydan ürettiği alarm."""
+    """An alert produced by the rule engine from an event."""
 
     __tablename__ = "alerts"
 
@@ -76,7 +76,7 @@ class Alert(Base):
     event_id = Column(Integer, ForeignKey("events.id"), nullable=True)
     status = Column(String(16), default="open", index=True)
 
-    # Korelasyon/dedup: aynı dedup_key'li AÇIK alarm tekrar üretilmez, count artırılır.
+    # Correlation/dedup: an OPEN alert with the same dedup_key is not re-created; count is incremented.
     dedup_key = Column(String(160), index=True)
     count = Column(Integer, default=1, nullable=False)
     last_seen = Column(DateTime, default=now_utc, index=True)

@@ -1,4 +1,4 @@
-"""Kripto denetim uçları: depodaki imzaların yeniden doğrulanması."""
+"""Crypto audit endpoints: re-verification of stored signatures."""
 from aegis_crypto import canonical, signing
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -39,6 +39,6 @@ def verify_signatures(db: Session = Depends(get_db)):
         invalid=len(invalid_ids),
         invalid_event_ids=invalid_ids,
         message=(
-            "Tüm imzalar geçerli." if ok else f"{len(invalid_ids)} olayın imzası geçersiz!"
+            "All signatures are valid." if ok else f"{len(invalid_ids)} event(s) have an invalid signature!"
         ),
     )

@@ -1,4 +1,4 @@
-"""TCP connect port tarayıcı + basit servis tespiti."""
+"""TCP connect port scanner + simple service detection."""
 import socket
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional
@@ -20,7 +20,7 @@ def scan_port(host: str, port: int, timeout: float = 0.5) -> Optional[Dict]:
         try:
             sock.settimeout(0.5)
             banner = sock.recv(80).decode(errors="ignore").strip()
-        except (OSError, socket.timeout):  # banner opsiyonel
+        except (OSError, socket.timeout):  # banner is optional
             pass
         return {"port": port, "service": COMMON_SERVICES.get(port, "unknown"), "banner": banner}
 

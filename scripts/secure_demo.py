@@ -1,12 +1,12 @@
-"""Faz 2 güvenli akış demosu.
+"""Phase 2 secure flow demo.
 
-Kanıtlar:
-  1. Geçerli imzalı + şifreli batch -> kabul (200).
-  2. Sahte (bozulmuş) imza -> 401 reddedilir.
-  3. Yanlış AES anahtarı -> 400 (çözme başarısız).
+Proves:
+  1. A valid signed + encrypted batch -> accepted (200).
+  2. A forged (corrupted) signature -> rejected with 401.
+  3. A wrong AES key -> 400 (decryption failed).
 
-Önce: python scripts/provision_agent.py --agent-id agent-local
-Kullanım: python scripts/secure_demo.py --server http://127.0.0.1:8000
+First: python scripts/provision_agent.py --agent-id agent-local
+Usage: python scripts/secure_demo.py --server http://127.0.0.1:8000
 """
 import argparse
 import base64
@@ -43,7 +43,7 @@ def main():
     url = args.server.rstrip("/") + "/api/ingest/secure"
 
     priv = keys.load_private_key(SECRETS / f"{AGENT}.key")
-    # AES anahtarını ECDH ile türet (ajan x25519 priv + sunucu x25519 pub).
+    # Derive the AES key via ECDH (agent x25519 priv + server x25519 pub).
     x_priv = keys.load_x25519_private(SECRETS / f"{AGENT}.x25519.key")
     server_pub = keys.load_x25519_public(SECRETS / "server_x25519.pub")
     aes_key = derive_aes_key(x_priv, server_pub)
@@ -55,12 +55,12 @@ def main():
          "data": {"name": "mimikatz.exe", "cmdline": "mimikatz.exe"}},
     ]
 
-    # 1) Geçerli
+    # 1) Valid
     env, signed = build_envelope(aes_key, priv, events)
     r = requests.post(url, json=env, timeout=10)
-    print(f"[1] Gecerli batch  -> HTTP {r.status_code} {r.json() if r.ok else r.text}")
+    print(f"[1] Valid batch    -> HTTP {r.status_code} {r.json() if r.ok else r.text}")
 
-    # 2) Sahte imza (ilk olayın imzasının son baytını boz)
+    # 2) Forged signature (corrupt the last byte of the first event's signature)
     env2, signed2 = build_envelope(aes_key, priv, events)
     bad = bytearray(base64.b64decode(signed2[0]["signature"]))
     bad[-1] ^= 0x01
@@ -68,15 +68,15 @@ def main():
     pt = canonical.canonical_bytes({"ts": _now_iso(), "events": signed2})
     n, ct = aesgcm.encrypt(aes_key, pt)
     r2 = requests.post(url, json={"agent_id": AGENT, "nonce": n, "ciphertext": ct}, timeout=10)
-    print(f"[2] Sahte imza     -> HTTP {r2.status_code} {r2.text.strip()[:80]}")
+    print(f"[2] Forged sig     -> HTTP {r2.status_code} {r2.text.strip()[:80]}")
 
-    # 3) Yanlış AES anahtarı
+    # 3) Wrong AES key
     wrong = os.urandom(32)
     env3, _ = build_envelope(wrong, priv, events)
     r3 = requests.post(url, json=env3, timeout=10)
-    print(f"[3] Yanlis AES key -> HTTP {r3.status_code} {r3.text.strip()[:80]}")
+    print(f"[3] Wrong AES key  -> HTTP {r3.status_code} {r3.text.strip()[:80]}")
 
-    print("\nBeklenen: [1]=200, [2]=401, [3]=400")
+    print("\nExpected: [1]=200, [2]=401, [3]=400")
 
 
 if __name__ == "__main__":

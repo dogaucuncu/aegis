@@ -1,6 +1,6 @@
-"""Güvenli gönderici: olayları imzalar (Ed25519) + şifreler (AES-GCM) + gönderir.
+"""Secure sender: signs events (Ed25519) + encrypts (AES-GCM) + sends them.
 
-Opsiyonel mTLS: ca_cert/client_cert/client_key verilirse HTTPS + istemci sertifikası.
+Optional mTLS: if ca_cert/client_cert/client_key are provided, uses HTTPS + a client certificate.
 """
 import datetime as dt
 from typing import Dict, List, Optional
@@ -25,12 +25,12 @@ class SecureSender:
         self.url = server_url.rstrip("/") + "/api/ingest/secure"
         self.agent_id = agent_id
         self.priv = keys.load_private_key(private_key_path)
-        # AES anahtarı ECDH(ajan_x25519_priv, sunucu_x25519_pub) + HKDF ile türetilir.
+        # The AES key is derived via ECDH(agent_x25519_priv, server_x25519_pub) + HKDF.
         x_priv = keys.load_x25519_private(x25519_key_path)
         server_pub = keys.load_x25519_public(server_x25519_pub_path)
         self.aes = derive_aes_key(x_priv, server_pub)
         self.timeout = timeout
-        # requests TLS parametreleri
+        # requests TLS parameters
         self.verify = ca_cert if ca_cert else True
         self.cert = (client_cert, client_key) if client_cert and client_key else None
 
@@ -49,7 +49,7 @@ class SecureSender:
         if not events:
             return 0
         signed = [self._sign_event(e) for e in events]
-        # ts: replay koruması için tazelik damgası (naive UTC isoformat).
+        # ts: freshness stamp for replay protection (naive UTC isoformat).
         ts = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None).isoformat()
         plaintext = canonical.canonical_bytes({"ts": ts, "events": signed})
         nonce, ciphertext = aesgcm.encrypt(self.aes, plaintext)

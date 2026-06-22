@@ -1,7 +1,7 @@
-"""Gerçek-zamanlı alarm akışı (Server-Sent Events).
+"""Real-time alert stream (Server-Sent Events).
 
-Dashboard tek bir kalıcı bağlantı açar; yeni alarmlar oluştukça sunucu push eder
-(istemci tarafı sürekli polling yerine). Sunucu tarafında ~1s'lik delta sorgusu yapılır.
+The dashboard opens a single persistent connection; the server pushes new alerts as they
+are created (instead of continuous client-side polling). A ~1s delta query runs server-side.
 """
 import asyncio
 import json

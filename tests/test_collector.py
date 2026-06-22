@@ -1,4 +1,4 @@
-"""Ajan collector testleri: FIM (dosya bütünlüğü) + auth-log başarısız giriş tail."""
+"""Agent collector tests: FIM (file integrity) + auth-log failed-login tail."""
 from aegis_agent.collector import TelemetryCollector
 
 
@@ -23,7 +23,7 @@ def test_fim_detects_created_modified_deleted(tmp_path):
 def test_auth_failure_tail(tmp_path):
     log = tmp_path / "auth.log"
     log.write_text("startup line\n")
-    col = TelemetryCollector(auth_log=str(log))  # offset = mevcut boyut
+    col = TelemetryCollector(auth_log=str(log))  # offset = current size
 
     with open(log, "a", encoding="utf-8") as f:
         f.write("Jun 21 10:00 host sshd[1]: Failed password for root from 203.0.113.9 port 22 ssh2\n")
@@ -33,7 +33,7 @@ def test_auth_failure_tail(tmp_path):
     assert len(events) == 2
     assert events[0]["data"] == {"username": "root", "source_ip": "203.0.113.9"}
     assert events[1]["data"]["username"] == "admin"
-    # Yeni satır yoksa boş döner (offset ilerledi)
+    # If there are no new lines, returns empty (offset advanced)
     assert col.collect_auth_failures() == []
 
 

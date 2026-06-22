@@ -1,12 +1,13 @@
-"""Ortak yardımcılar."""
+"""Common helpers."""
 import datetime as dt
 
 
 def now_utc() -> dt.datetime:
-    """Naive UTC zaman damgası.
+    """Naive UTC timestamp.
 
-    `datetime.utcnow()` Python 3.12+'da deprecated; tz-aware'e geçmek ise imza/hash
-    kanonik gösterimindeki `isoformat()` çıktısını değiştirip imza uyumunu bozar.
-    Bu yüzden tz-aware UTC alıp tzinfo'yu düşürerek mevcut (naive) formatı koruyoruz.
+    `datetime.utcnow()` is deprecated in Python 3.12+; switching to tz-aware would change
+    the `isoformat()` output in the signature/hash canonical representation and break
+    signature compatibility. So we take tz-aware UTC and drop tzinfo to preserve the
+    existing (naive) format.
     """
     return dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)

@@ -1,8 +1,8 @@
-"""Aegis paylaşılan kriptografi katmanı.
+"""Aegis shared cryptography layer.
 
-- Ed25519 ile olay imzalama (kimlik doğrulama + bütünlük)
-- AES-GCM ile taşıma şifreleme (gizlilik)
-- Kanonik JSON serileştirme (imza/şifre için deterministik bytes)
+- Event signing with Ed25519 (authentication + integrity)
+- Transport encryption with AES-GCM (confidentiality)
+- Canonical JSON serialization (deterministic bytes for signing/encryption)
 """
 from .aesgcm import decrypt, encrypt
 from .canonical import canonical_bytes, event_canonical

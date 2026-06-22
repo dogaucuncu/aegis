@@ -1,14 +1,14 @@
-"""Aegis için PostgreSQL veritabanını oluşturur (Faz 5).
+"""Creates the PostgreSQL database for Aegis (Phase 5).
 
-PostgreSQL çalışıyor olmalı. Kimlik bilgisi env veya argümanla verilir.
-Kullanım:
-    set PGPASSWORD=<sifre>
+PostgreSQL must be running. Credentials are provided via env or arguments.
+Usage:
+    set PGPASSWORD=<password>
     python scripts/init_postgres.py --host 127.0.0.1 --port 5432 --user postgres --dbname aegis
 
-Ardından sunucuyu şu env ile başlatın:
-    $env:AEGIS_DATABASE_URL = "postgresql+psycopg://postgres:<sifre>@127.0.0.1:5432/aegis"
+Then start the server with this env:
+    $env:AEGIS_DATABASE_URL = "postgresql+psycopg://postgres:<password>@127.0.0.1:5432/aegis"
     uvicorn app.main:app --port 8000
-(Tablolar başlangıçta otomatik oluşturulur — create_all SQLite ve PostgreSQL'de aynı çalışır.)
+(Tables are auto-created on startup — create_all works the same on SQLite and PostgreSQL.)
 """
 import argparse
 import os
@@ -32,8 +32,8 @@ def main():
             password=args.password, dbname="postgres", autocommit=True,
         )
     except Exception as exc:
-        print(f"[init_postgres] Baglanti basarisiz: {exc}", file=sys.stderr)
-        print("PostgreSQL calisiyor mu? Kimlik bilgileri dogru mu (PGPASSWORD)?", file=sys.stderr)
+        print(f"[init_postgres] Connection failed: {exc}", file=sys.stderr)
+        print("Is PostgreSQL running? Are the credentials correct (PGPASSWORD)?", file=sys.stderr)
         sys.exit(1)
 
     with conn:
@@ -41,13 +41,13 @@ def main():
             "SELECT 1 FROM pg_database WHERE datname = %s", (args.dbname,)
         ).fetchone()
         if exists:
-            print(f"[init_postgres] '{args.dbname}' zaten var.")
+            print(f"[init_postgres] '{args.dbname}' already exists.")
         else:
             conn.execute(f'CREATE DATABASE "{args.dbname}"')
-            print(f"[init_postgres] '{args.dbname}' olusturuldu.")
+            print(f"[init_postgres] '{args.dbname}' created.")
 
-    pw = args.password or "<sifre>"
-    print("\nSunucu icin DATABASE URL:")
+    pw = args.password or "<password>"
+    print("\nDATABASE URL for the server:")
     print(f'  postgresql+psycopg://{args.user}:{pw}@{args.host}:{args.port}/{args.dbname}')
 
 

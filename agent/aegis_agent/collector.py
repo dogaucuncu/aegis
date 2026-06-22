@@ -1,10 +1,10 @@
-"""Uç nokta telemetri toplayıcı (cross-platform).
+"""Endpoint telemetry collector (cross-platform).
 
-Toplananlar:
-  - process     : yeni başlayan süreçler (psutil)
-  - network     : kurulu dışa-dönük bağlantılar (psutil)
-  - file_change : izlenen yollarda dosya bütünlüğü değişiklikleri (FIM, hash-tabanlı)
-  - auth_failure: izlenen auth log dosyasındaki başarısız girişler (tail + regex)
+Collects:
+  - process     : newly started processes (psutil)
+  - network     : established outbound connections (psutil)
+  - file_change : file integrity changes on watched paths (FIM, hash-based)
+  - auth_failure: failed logins in the watched auth log file (tail + regex)
 """
 import datetime as dt
 import hashlib
@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Set
 
 import psutil
 
-# sshd / yaygın "Failed password for [invalid user ]<kullanıcı> from <ip>" kalıbı
+# sshd / common "Failed password for [invalid user ]<user> from <ip>" pattern
 _AUTH_FAIL_RE = re.compile(
     r"Failed password for (?:invalid user )?(?P<user>\S+) from (?P<ip>\S+)", re.IGNORECASE
 )
@@ -31,18 +31,18 @@ class TelemetryCollector:
         self._watch_paths = [Path(p) for p in (watch_paths or [])]
         self._auth_log = Path(auth_log) if auth_log else None
         self._file_hashes: Dict[str, str] = self._snapshot_files()
-        # auth log'da yalnızca yeni satırları okumak için offset
+        # offset to read only new lines from the auth log
         self._auth_offset = self._auth_log.stat().st_size if (
             self._auth_log and self._auth_log.exists()
         ) else 0
 
     def _now(self) -> str:
-        # Naive UTC isoformat (sunucu kanonik formatıyla uyumlu).
+        # Naive UTC isoformat (compatible with the server's canonical format).
         return dt.datetime.now(dt.timezone.utc).replace(tzinfo=None).isoformat()
 
     # ---------- process / network ----------
     def collect_new_processes(self) -> List[Dict]:
-        """Son taramadan bu yana başlayan süreçleri 'process' olayı olarak döndürür."""
+        """Returns processes started since the last scan as 'process' events."""
         events: List[Dict] = []
         current = set(psutil.pids())
         for pid in current - self._seen_pids:
@@ -63,7 +63,7 @@ class TelemetryCollector:
         return events
 
     def collect_network(self) -> List[Dict]:
-        """Kurulu (ESTABLISHED) dışa dönük bağlantıları 'network' olayı olarak döndürür."""
+        """Returns established (ESTABLISHED) outbound connections as 'network' events."""
         events: List[Dict] = []
         try:
             conns = psutil.net_connections(kind="inet")
@@ -113,7 +113,7 @@ class TelemetryCollector:
         return snap
 
     def collect_file_changes(self) -> List[Dict]:
-        """İzlenen yollarda created/modified/deleted dosya değişikliklerini döndürür."""
+        """Returns created/modified/deleted file changes on the watched paths."""
         if not self._watch_paths:
             return []
         events: List[Dict] = []
@@ -142,12 +142,12 @@ class TelemetryCollector:
 
     # ---------- failed logins ----------
     def collect_auth_failures(self) -> List[Dict]:
-        """İzlenen auth log dosyasındaki yeni başarısız giriş satırlarını döndürür."""
+        """Returns new failed-login lines from the watched auth log file."""
         if not self._auth_log or not self._auth_log.exists():
             return []
         events: List[Dict] = []
         size = self._auth_log.stat().st_size
-        if size < self._auth_offset:  # döndü/kısaldı -> baştan
+        if size < self._auth_offset:  # rotated/truncated -> from the start
             self._auth_offset = 0
         try:
             with open(self._auth_log, "r", encoding="utf-8", errors="ignore") as f:

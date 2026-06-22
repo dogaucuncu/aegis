@@ -1,7 +1,7 @@
-"""Özellik çıkarımı.
+"""Feature extraction.
 
-- URL özellikleri (phishing): tamamen string'den, çevrimdışı.
-- NIDS akış özellikleri: ad listesi (sentetik üretim ve NSL-KDD numeric alt kümesi ile uyumlu).
+- URL features (phishing): entirely from the string, offline.
+- NIDS flow features: a name list (compatible with synthetic generation and the NSL-KDD numeric subset).
 """
 import re
 from typing import Dict, List
@@ -19,7 +19,7 @@ URL_FEATURES: List[str] = [
     "path_length", "num_params",
 ]
 
-# Sentetik üretim ve NSL-KDD numeric alt kümesi ile uyumlu akış özellikleri
+# Flow features compatible with synthetic generation and the NSL-KDD numeric subset
 NIDS_FEATURES: List[str] = [
     "duration", "src_bytes", "dst_bytes", "count", "srv_count",
     "serror_rate", "same_srv_rate", "dst_host_count",
@@ -45,5 +45,5 @@ def url_features(url: str) -> Dict[str, float]:
 
 
 def to_vector(feat: Dict[str, float], names: List[str]) -> List[float]:
-    """Adlandırılmış özellik sözlüğünü sabit sıraya göre vektöre çevirir."""
+    """Converts a named feature dict into a vector following a fixed order."""
     return [float(feat.get(n, 0)) for n in names]

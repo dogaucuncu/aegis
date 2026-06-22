@@ -1,4 +1,4 @@
-"""Eğitilmiş modelleri yükleme ve skorlama."""
+"""Loading and scoring trained models."""
 from pathlib import Path
 from typing import Dict
 
@@ -11,16 +11,16 @@ MODELS = Path(__file__).resolve().parent.parent / "models"
 
 
 def load(name: str):
-    """name: 'nids' veya 'phishing'. Bulunamazsa FileNotFoundError."""
+    """name: 'nids' or 'phishing'. Raises FileNotFoundError if not found."""
     path = MODELS / f"{name}.joblib"
     if not path.exists():
-        raise FileNotFoundError(f"Model yok: {path} — once egitin (train_*.py)")
+        raise FileNotFoundError(f"Model not found: {path} — train it first (train_*.py)")
     return joblib.load(path)
 
 
 def _proba(bundle, feat: Dict[str, float]) -> float:
     names = bundle["feature_names"]
-    # Model DataFrame (kolon adlı) üzerinde eğitildi; aynı şekilde besle.
+    # The model was trained on a DataFrame (with column names); feed it the same way.
     row = pd.DataFrame([{n: float(feat.get(n, 0)) for n in names}])[names]
     return float(bundle["model"].predict_proba(row)[0][1])
 

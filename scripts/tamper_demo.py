@@ -1,7 +1,7 @@
-"""Kurcalama demosu: DB'deki bir olayı elle değiştirir.
+"""Tampering demo: manually modifies an event in the DB.
 
-Çalıştırdıktan sonra /api/integrity/verify ucu zincirin kırıldığını raporlamalıdır.
-Kullanım:
+After running it, the /api/integrity/verify endpoint should report that the chain is broken.
+Usage:
     python scripts/tamper_demo.py --db F:\\aegis\\server\\data\\aegis.db --id 3
 """
 import argparse
@@ -20,8 +20,8 @@ def main():
     conn.execute("UPDATE events SET data = ? WHERE id = ?", (payload, args.id))
     conn.commit()
     conn.close()
-    print(f"Event #{args.id} elle degistirildi (kurcalama simulasyonu).")
-    print("Simdi kontrol et: http://127.0.0.1:8000/api/integrity/verify")
+    print(f"Event #{args.id} manually modified (tampering simulation).")
+    print("Now check: http://127.0.0.1:8000/api/integrity/verify")
 
 
 if __name__ == "__main__":

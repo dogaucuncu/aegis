@@ -1,4 +1,4 @@
-"""Aegis SOC sunucusu — FastAPI uygulama girişi."""
+"""Aegis SOC server — FastAPI application entry point."""
 import logging
 
 from fastapi import Depends, FastAPI
@@ -12,16 +12,16 @@ from .middleware import RateLimitMiddleware
 
 log = logging.getLogger("aegis.server")
 
-# Dev/test: tabloları otomatik oluştur. Üretimde AEGIS_AUTO_CREATE=0 + Alembic.
+# Dev/test: auto-create tables. In production use AEGIS_AUTO_CREATE=0 + Alembic.
 if config.AUTO_CREATE:
     Base.metadata.create_all(bind=engine)
 
 if not config.API_KEYS:
-    log.warning("AEGIS_API_KEYS tanımlı değil — API auth KAPALI (yalnızca yerel/demo için).")
+    log.warning("AEGIS_API_KEYS is not set — API auth DISABLED (for local/demo use only).")
 
 app = FastAPI(title=config.API_TITLE, version=config.API_VERSION)
 
-# CORS: yalnızca izinli origin'ler (varsayılan UI portu).
+# CORS: only allowed origins (default UI port).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
@@ -30,7 +30,7 @@ app.add_middleware(
 )
 app.add_middleware(RateLimitMiddleware, limit_per_min=config.RATE_LIMIT_PER_MIN)
 
-# Olay enjekte eden uçlar API anahtarı ister (auth açıksa). Okuma uçları açık.
+# Event-injecting endpoints require an API key (if auth is enabled). Read endpoints are open.
 app.include_router(ingest.router, dependencies=[Depends(require_api_key)])
 app.include_router(secure_ingest.router, dependencies=[Depends(require_api_key)])
 app.include_router(events.router)

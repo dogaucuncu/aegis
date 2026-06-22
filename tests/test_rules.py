@@ -1,4 +1,4 @@
-"""Kural motoru testleri — API üzerinden uçtan uca (ingest -> alarm)."""
+"""Rule engine tests — end-to-end via the API (ingest -> alert)."""
 
 
 def _rule_ids(client):

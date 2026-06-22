@@ -1,7 +1,7 @@
-"""Kural motoru — YAML (Sigma-benzeri) tespit kurallarını yükler ve değerlendirir.
+"""Rule engine — loads and evaluates YAML (Sigma-like) detection rules.
 
-Kurallar `detection_rules/*.yml` içinde. Her kural bir Event alır ve 0+ Alert döndürür.
-Desteklenen op'lar: in, contains_any, equals, len_gte ; isteğe bağlı window (pencere-eşik).
+The rules live in `detection_rules/*.yml`. Each rule takes an Event and returns 0+ Alerts.
+Supported ops: in, contains_any, equals, len_gte ; optional window (window-threshold).
 """
 import datetime as dt
 import re

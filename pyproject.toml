@@ -1,18 +1,18 @@
-# Aegis — geliştirme aracı yapılandırması (ruff lint + format).
-# Paket meta'ları kendi alt dizinlerinde (crypto/pyproject.toml vb.).
+# Aegis — development tooling configuration (ruff lint + format).
+# Package metadata lives in their own subdirectories (crypto/pyproject.toml etc.).
 [tool.ruff]
 line-length = 100
 target-version = "py313"
 extend-exclude = [".venv", ".venv-dev", "**/.venv", "server/alembic", "ml/models", "ml/data", "certs"]
 
 [tool.ruff.lint]
-# E/F/I: stil + kullanılmayan import + import sırası. UP/B bu kod tabanında (FastAPI
-# Depends defaults, kademeli typing) gürültü üretir; kapsam dışı.
+# E/F/I: style + unused imports + import order. UP/B produce noise in this codebase
+# (FastAPI Depends defaults, gradual typing); out of scope.
 select = ["E", "F", "I"]
-ignore = ["E501"]  # satır uzunluğu format'a bırakıldı
+ignore = ["E501"]  # line length is left to the formatter
 
 [tool.ruff.lint.per-file-ignores]
-"lab/vulnerable_app/app.py" = ["S"]  # kasıtlı zafiyetli demo
+"lab/vulnerable_app/app.py" = ["S"]  # intentionally vulnerable demo
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

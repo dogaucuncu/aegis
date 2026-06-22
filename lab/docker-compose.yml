@@ -1,5 +1,5 @@
-# Aegis Lab — kurban hedefler (Docker varsa).
-# Bu makinede Docker yoksa lab/vulnerable_app yerel olarak çalıştırılabilir.
+# Aegis Lab — victim targets (if Docker is available).
+# If Docker is not available on this machine, lab/vulnerable_app can be run locally.
 #   docker compose -f lab/docker-compose.yml up -d
 services:
   juice-shop:

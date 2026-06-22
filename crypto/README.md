@@ -1,15 +1,15 @@
-# aegis-crypto — paylaşılan kriptografi kütüphanesi
+# aegis-crypto — shared cryptography library
 
-Ajan ve sunucunun ortak kullandığı, kurulabilir (editable) küçük kütüphane.
+A small, installable (editable) library shared by the agent and the server.
 
-- **Ed25519** — olay imzalama / doğrulama (`sign`, `verify`)
-- **AES-256-GCM** — kimlik-doğrulamalı şifreleme (`encrypt`, `decrypt`)
-- **X25519 + HKDF** — ECDH ile paylaşılan AES anahtarı türetme (`derive_aes_key`)
-- **Kanonik JSON** — imza/şifre için deterministik bytes (`canonical_bytes`, `event_canonical`)
-- **keys** — Ed25519/X25519/AES anahtar üret/kaydet/yükle
+- **Ed25519** — event signing / verification (`sign`, `verify`)
+- **AES-256-GCM** — authenticated encryption (`encrypt`, `decrypt`)
+- **X25519 + HKDF** — derive a shared AES key via ECDH (`derive_aes_key`)
+- **Canonical JSON** — deterministic bytes for signing/encryption (`canonical_bytes`, `event_canonical`)
+- **keys** — generate/save/load Ed25519/X25519/AES keys
 
-## Kurulum
+## Installation
 ```powershell
-pip install -e crypto      # repo kökünden
+pip install -e crypto      # from the repo root
 ```
-İki tarafın da aynı bytes'ı üretmesi için `event_canonical` her iki yanda kullanılır.
+`event_canonical` is used on both sides so that each produces the same bytes.

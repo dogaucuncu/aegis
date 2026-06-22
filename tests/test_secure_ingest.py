@@ -1,4 +1,4 @@
-"""Güvenli ingestion testleri: geçerli=200, sahte imza=401, yanlış anahtar=400, replay=409."""
+"""Secure ingestion tests: valid=200, forged signature=401, wrong key=400, replay=409."""
 import base64
 import datetime as dt
 
@@ -12,9 +12,9 @@ def _now_iso():
 
 @pytest.fixture()
 def provisioned(tmp_path, monkeypatch):
-    """keystore'u geçici dizine yönlendirir; ECDH anahtarlarını üretir.
+    """Points the keystore to a temp directory; generates the ECDH keys.
 
-    Döndürür: (agent_id, ed25519_priv, türetilmiş_aes_key)
+    Returns: (agent_id, ed25519_priv, derived_aes_key)
     """
     from app import keystore
 
@@ -23,18 +23,18 @@ def provisioned(tmp_path, monkeypatch):
     monkeypatch.setattr(keystore, "SERVER_KEYS_DIR", tmp_path)
     monkeypatch.setattr(keystore, "KEYS_DIR", agents_dir)
 
-    # Sunucu X25519 çifti
+    # Server X25519 pair
     server_x = keys.generate_x25519()
     keys.save_x25519_private(server_x, tmp_path / "server_x25519.key")
     keys.save_x25519_public(server_x, tmp_path / "server_x25519.pub")
 
-    # Ajan Ed25519 (imza) + X25519 (ECDH)
+    # Agent Ed25519 (signing) + X25519 (ECDH)
     ed = keys.generate_ed25519()
     keys.save_public_key(ed, agents_dir / "ag.pub")
     agent_x = keys.generate_x25519()
     keys.save_x25519_public(agent_x, agents_dir / "ag.x25519.pub")
 
-    # Ajan tarafı türetilmiş AES (server_priv + agent_pub ile eşit olmalı)
+    # Agent-side derived AES (must equal the one derived from server_priv + agent_pub)
     aes = derive_aes_key(agent_x, server_x.public_key())
     return "ag", ed, aes
 
@@ -56,7 +56,7 @@ def test_secure_valid(client, provisioned):
     agent, priv, aes = provisioned
     env, _ = _envelope(agent, priv, aes, _EV)
     assert client.post("/api/ingest/secure", json=env).status_code == 200
-    # Güvenli kanaldan gelen olay imzalı işaretlenir.
+    # An event from the secure channel is marked as signed.
     assert client.get("/api/events").json()[0]["signed"] is True
 
 
@@ -74,14 +74,14 @@ def test_secure_forged_signature(client, provisioned):
 
 def test_secure_wrong_key(client, provisioned):
     agent, priv, _aes = provisioned
-    env, _ = _envelope(agent, priv, keys.generate_aes_key(), _EV)  # yanlış AES
+    env, _ = _envelope(agent, priv, keys.generate_aes_key(), _EV)  # wrong AES
     assert client.post("/api/ingest/secure", json=env).status_code == 400
 
 
 def test_secure_unknown_agent(client, provisioned):
     _, priv, aes = provisioned
     env, _ = _envelope("ag", priv, aes, _EV)
-    env["agent_id"] = "bilinmeyen"
+    env["agent_id"] = "unknown"
     assert client.post("/api/ingest/secure", json=env).status_code == 401
 
 
@@ -89,7 +89,7 @@ def test_secure_replay_rejected(client, provisioned):
     agent, priv, aes = provisioned
     env, _ = _envelope(agent, priv, aes, _EV)
     assert client.post("/api/ingest/secure", json=env).status_code == 200
-    # Aynı zarfı tekrar gönder -> replay
+    # Send the same envelope again -> replay
     assert client.post("/api/ingest/secure", json=env).status_code == 409
 
 

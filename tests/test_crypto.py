@@ -17,13 +17,13 @@ def test_sign_verify_roundtrip():
     data = canonical_bytes({"b": 2, "a": 1})
     sig = sign(priv, data)
     assert verify(pub, data, sig)
-    assert not verify(pub, data + b"x", sig)  # kurcalanmış reddedilir
+    assert not verify(pub, data + b"x", sig)  # tampered data is rejected
 
 
 def test_aes_roundtrip_and_wrong_key():
     key = keys.generate_aes_key()
-    nonce, ct = encrypt(key, b"gizli")
-    assert decrypt(key, nonce, ct) == b"gizli"
+    nonce, ct = encrypt(key, b"secret")
+    assert decrypt(key, nonce, ct) == b"secret"
     with pytest.raises(InvalidTag):
         decrypt(keys.generate_aes_key(), nonce, ct)
 

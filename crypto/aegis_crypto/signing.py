@@ -1,4 +1,4 @@
-"""Ed25519 imzalama / doğrulama."""
+"""Ed25519 signing / verification."""
 import base64
 import binascii
 
@@ -10,12 +10,12 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 
 
 def sign(private_key: Ed25519PrivateKey, data: bytes) -> str:
-    """Veriyi imzalar, base64 imza döndürür."""
+    """Signs the data and returns a base64 signature."""
     return base64.b64encode(private_key.sign(data)).decode("ascii")
 
 
 def verify(public_key: Ed25519PublicKey, data: bytes, signature_b64: str) -> bool:
-    """İmza geçerliyse True, değilse (veya bozuksa) False."""
+    """True if the signature is valid, otherwise (or if corrupt) False."""
     try:
         public_key.verify(base64.b64decode(signature_b64), data)
         return True

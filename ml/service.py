@@ -1,7 +1,7 @@
-"""Aegis ML mikroservisi — NIDS + phishing skorlama API'si.
+"""Aegis ML microservice — NIDS + phishing scoring API.
 
-Çalıştır:  uvicorn service:app --port 8001   (ml/ dizininden)
-Önce modelleri eğit:  python -m aegis_ml.train
+Run:  uvicorn service:app --port 8001   (from the ml/ directory)
+Train the models first:  python -m aegis_ml.train
 """
 from contextlib import asynccontextmanager
 from typing import Dict, Optional
@@ -47,12 +47,12 @@ def health():
 @app.post("/score/url")
 def score_url(body: UrlIn):
     if _models["phishing"] is None:
-        raise HTTPException(503, "phishing modeli yuklu degil — once egitin")
+        raise HTTPException(503, "phishing model not loaded — train it first")
     return serve.score_url(_models["phishing"], body.url)
 
 
 @app.post("/score/flow")
 def score_flow(body: FlowIn):
     if _models["nids"] is None:
-        raise HTTPException(503, "nids modeli yuklu degil — once egitin")
+        raise HTTPException(503, "nids model not loaded — train it first")
     return serve.score_flow(_models["nids"], body.features)

@@ -1,7 +1,7 @@
-"""Her iki modeli eğit, değerlendir ve kaydet.
+"""Train, evaluate and save both models.
 
-Kullanım:
-    python -m aegis_ml.train            # ikisini de
+Usage:
+    python -m aegis_ml.train            # both
     python -m aegis_ml.train --only nids
 """
 import argparse
@@ -53,7 +53,7 @@ def _train_one(name, X, y, feature_names, source, estimator):
         json.dumps({"source": source, **metrics}, indent=2)
     )
 
-    print(f"\n=== {name.upper()} modeli (veri: {source}, n={len(y)}) ===")
+    print(f"\n=== {name.upper()} model (data: {source}, n={len(y)}) ===")
     print(json.dumps(metrics, indent=2))
     print(classification_report(y_test, model.predict(X_test), digits=3))
     return metrics
@@ -73,7 +73,7 @@ def main():
         X, y, names, src = datasets.load_phishing()
         _train_one("phishing", X, y, names, src, LogisticRegression(max_iter=1000))
 
-    print(f"\nModeller kaydedildi -> {MODELS}")
+    print(f"\nModels saved -> {MODELS}")
 
 
 if __name__ == "__main__":

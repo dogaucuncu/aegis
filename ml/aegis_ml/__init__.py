@@ -1,1 +1,1 @@
-"""Aegis ML motoru: NIDS ağ-anomali + phishing URL sınıflandırma."""
+"""Aegis ML engine: NIDS network-anomaly + phishing URL classification."""

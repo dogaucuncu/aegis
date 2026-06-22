@@ -1,4 +1,4 @@
-"""ML testleri: özellik çıkarımı, model kalitesi, skorlama."""
+"""ML tests: feature extraction, model quality, scoring."""
 from aegis_ml import datasets, features, serve
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score
@@ -39,5 +39,5 @@ def test_phishing_scoring():
 def test_nids_dataset_loads():
     X, y, names, src = datasets.load_nids()
     assert src in ("synthetic", "real(NSL-KDD)")
-    assert 0 < y.mean() < 1  # iki sınıf da var
+    assert 0 < y.mean() < 1  # both classes are present
     assert list(X.columns) == names

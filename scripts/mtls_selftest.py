@@ -1,12 +1,12 @@
-"""mTLS bellek-içi (MemoryBIO) öz-testi.
+"""In-memory (MemoryBIO) mTLS self-test.
 
-Sertifikaların karşılıklı kimlik doğrulamayı (mutual TLS) doğru sağladığını
-ağ katmanına (ve dolayısıyla yerel TLS araya-girmesine) çıkmadan kanıtlar.
+Proves that the certificates correctly provide mutual authentication (mutual TLS)
+without going out to the network layer (and thus without local TLS interception).
 
-  - Sunucu: server.pem/key, client'ı CA ile doğrular, CERT_REQUIRED
-  - İstemci: client.pem/key, server'ı CA ile doğrular (hostname=localhost)
+  - Server: server.pem/key, verifies the client with the CA, CERT_REQUIRED
+  - Client: client.pem/key, verifies the server with the CA (hostname=localhost)
 
-Kullanım: python scripts/mtls_selftest.py
+Usage: python scripts/mtls_selftest.py
 """
 import ssl
 from pathlib import Path
@@ -16,19 +16,19 @@ CERTS = Path(__file__).resolve().parent.parent / "certs"
 
 def _cn(peer_cert) -> str:
     if not peer_cert:
-        return "(yok)"
+        return "(none)"
     for rdn in peer_cert.get("subject", ()):
         for k, v in rdn:
             if k == "commonName":
                 return v
-    return "(bilinmiyor)"
+    return "(unknown)"
 
 
 def main():
     server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     server_ctx.load_cert_chain(CERTS / "server.pem", CERTS / "server.key")
     server_ctx.load_verify_locations(CERTS / "ca.pem")
-    server_ctx.verify_mode = ssl.CERT_REQUIRED  # istemci sertifikası zorunlu
+    server_ctx.verify_mode = ssl.CERT_REQUIRED  # client certificate required
 
     client_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     client_ctx.load_cert_chain(CERTS / "client.pem", CERTS / "client.key")
@@ -62,11 +62,11 @@ def main():
         if cdone and sdone:
             break
 
-    assert cdone and sdone, "El sıkışması tamamlanamadı"
-    print("mTLS el sıkışması: BAŞARILI")
-    print(f"  Sunucu, istemciyi gördü : CN={_cn(sobj.getpeercert())}")
-    print(f"  İstemci, sunucuyu gördü : CN={_cn(cobj.getpeercert())}")
-    print(f"  Şifre paketi            : {cobj.cipher()[0]}")
+    assert cdone and sdone, "Handshake could not be completed"
+    print("mTLS handshake: SUCCESS")
+    print(f"  Server saw client : CN={_cn(sobj.getpeercert())}")
+    print(f"  Client saw server : CN={_cn(cobj.getpeercert())}")
+    print(f"  Cipher suite      : {cobj.cipher()[0]}")
 
 
 if __name__ == "__main__":

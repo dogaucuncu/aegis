@@ -2,9 +2,9 @@ server_url: "http://127.0.0.1:8000"
 agent_id: "agent-local"
 interval: 3.0
 mode: secure
-private_key: secrets/agent-local.key            # Ed25519 (imza)
+private_key: secrets/agent-local.key            # Ed25519 (signing)
 x25519_key: secrets/agent-local.x25519.key      # X25519 (ECDH)
 server_x25519_pub: secrets/server_x25519.pub
-# FIM (dosya bütünlüğü) + başarısız-giriş toplama
+# FIM (file integrity) + failed-login collection
 watch_paths: ["F:/aegis/lab/watched"]
 auth_log: "F:/aegis/lab/auth.log"

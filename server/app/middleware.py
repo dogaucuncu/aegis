@@ -1,7 +1,7 @@
-"""Hafif per-IP rate limit middleware (sabit pencere, in-memory).
+"""Lightweight per-IP rate limit middleware (fixed window, in-memory).
 
-`AEGIS_RATE_LIMIT_PER_MIN` > 0 ise etkin. Tek-süreç dev için yeterli; üretimde
-dağıtık bir sayaç (Redis) gerekir.
+Enabled when `AEGIS_RATE_LIMIT_PER_MIN` > 0. Sufficient for single-process dev; in production
+a distributed counter (Redis) is required.
 """
 import time
 from collections import defaultdict
@@ -24,7 +24,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         window_start = now - 60
         hits = [t for t in self._hits[ip] if t > window_start]
         if len(hits) >= self.limit:
-            return JSONResponse(status_code=429, content={"detail": "Rate limit aşıldı"})
+            return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
         hits.append(now)
         self._hits[ip] = hits
         return await call_next(request)

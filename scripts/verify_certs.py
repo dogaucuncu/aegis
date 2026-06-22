@@ -1,4 +1,4 @@
-"""Üretilen sertifikaların öznelerini ve CA imza zincirini doğrular."""
+"""Verifies the subjects of the generated certificates and the CA signature chain."""
 from pathlib import Path
 
 from cryptography import x509

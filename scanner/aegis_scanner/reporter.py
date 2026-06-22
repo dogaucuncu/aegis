@@ -1,4 +1,4 @@
-"""Tarama bulgularını Aegis sunucusuna olay olarak gönderir."""
+"""Sends scan findings to the Aegis server as events."""
 from typing import Dict, List
 
 import requests

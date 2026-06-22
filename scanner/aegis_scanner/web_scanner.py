@@ -1,7 +1,7 @@
-"""Basit web zafiyet tarayıcı: SQL injection + yansıyan XSS.
+"""Simple web vulnerability scanner: SQL injection + reflected XSS.
 
-Bir URL'deki her query parametresini fuzz'lar. Eğitim amaçlı; gerçek bir tarayıcının
-(ZAP/Burp) yerini tutmaz ama tespit mantığını gösterir.
+Fuzzes every query parameter in a URL. For educational purposes; it does not replace a
+real scanner (ZAP/Burp) but demonstrates the detection logic.
 """
 from typing import Dict, List
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
@@ -32,7 +32,7 @@ def scan_url(url: str, timeout: float = 5.0) -> List[Dict]:
         return findings
 
     for param in params:
-        # --- SQL injection (hata-tabanlı) ---
+        # --- SQL injection (error-based) ---
         for payload in SQLI_PAYLOADS:
             try:
                 r = requests.get(_with_param(url, param, payload), timeout=timeout)
@@ -41,7 +41,7 @@ def scan_url(url: str, timeout: float = 5.0) -> List[Dict]:
             if any(sig in r.text.lower() for sig in SQL_ERROR_SIGNATURES):
                 findings.append({
                     "type": "sqli", "url": url, "param": param, "payload": payload,
-                    "evidence": "SQL hata mesaji yaniti icinde yansidi", "severity": "high",
+                    "evidence": "SQL error message reflected in the response", "severity": "high",
                 })
                 break
 
@@ -51,12 +51,12 @@ def scan_url(url: str, timeout: float = 5.0) -> List[Dict]:
             if XSS_PAYLOAD in r.text:
                 findings.append({
                     "type": "xss", "url": url, "param": param, "payload": XSS_PAYLOAD,
-                    "evidence": "Payload HTML'e kacissiz yansidi", "severity": "medium",
+                    "evidence": "Payload reflected into HTML without escaping", "severity": "medium",
                 })
         except requests.RequestException:
             pass
 
-        # --- Open redirect (yönlendirmeyi takip etmeden Location'ı incele) ---
+        # --- Open redirect (inspect Location without following the redirect) ---
         try:
             r = requests.get(
                 _with_param(url, param, OPENREDIR_PAYLOAD),
@@ -68,7 +68,7 @@ def scan_url(url: str, timeout: float = 5.0) -> List[Dict]:
                 findings.append({
                     "type": "open_redirect", "url": url, "param": param,
                     "payload": OPENREDIR_PAYLOAD,
-                    "evidence": f"Location dış adrese yönlendiriyor: {location}",
+                    "evidence": f"Location redirects to an external address: {location}",
                     "severity": "medium",
                 })
         except requests.RequestException:

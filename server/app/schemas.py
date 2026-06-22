@@ -1,4 +1,4 @@
-"""Pydantic şemaları (istek/yanıt sözleşmeleri)."""
+"""Pydantic schemas (request/response contracts)."""
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -58,10 +58,10 @@ class IntegrityResult(BaseModel):
 
 
 class SecureEnvelope(BaseModel):
-    """Güvenli ingestion zarfı: AES-GCM ile şifrelenmiş olay batch'i.
+    """Secure ingestion envelope: an AES-GCM encrypted batch of events.
 
-    Çözülen içerik: {"events": [{agent_id, event_type, timestamp, data, signature}, ...]}
-    İmzalar şifrelenmiş içeriğin içindedir (taşımada da gizli).
+    Decrypted content: {"events": [{agent_id, event_type, timestamp, data, signature}, ...]}
+    The signatures are inside the encrypted content (confidential in transit too).
     """
 
     agent_id: str

@@ -1,4 +1,4 @@
-"""Hash-zinciri bütünlük (tamper-evident log) testleri."""
+"""Hash-chain integrity (tamper-evident log) tests."""
 
 
 def test_integrity_valid_then_detects_tamper(client):
@@ -8,7 +8,7 @@ def test_integrity_valid_then_detects_tamper(client):
     ]})
     assert client.get("/api/integrity/verify").json()["valid"] is True
 
-    # DB'de bir olayı elle değiştir (kurcalama)
+    # Manually modify an event in the DB (tampering)
     from app import models
     from app.database import SessionLocal
 

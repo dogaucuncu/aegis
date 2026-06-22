@@ -1,4 +1,4 @@
-"""Alembic ortamı — Aegis modellerini ve AEGIS_DATABASE_URL'i kullanır."""
+"""Alembic environment — uses the Aegis models and AEGIS_DATABASE_URL."""
 import sys
 from logging.config import fileConfig
 from pathlib import Path
@@ -6,10 +6,10 @@ from pathlib import Path
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# server/ dizinini path'e ekle ki app paketi import edilebilsin.
+# Add the server/ directory to the path so the app package can be imported.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import models  # noqa: F401  (tabloları metadata'ya kaydet)
+from app import models  # noqa: F401  (register tables on the metadata)
 from app.config import DATABASE_URL
 from app.database import Base
 

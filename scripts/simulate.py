@@ -1,7 +1,7 @@
-"""Demo simülasyonu: kural motorunu tetikleyecek sentetik olaylar gönderir.
+"""Demo simulation: sends synthetic events that trigger the rule engine.
 
-Gerçek saldırı aracı çalıştırmadan dashboard'da alarm üretmek için kullanılır.
-Kullanım:
+Used to produce alerts on the dashboard without running a real attack tool.
+Usage:
     python scripts/simulate.py --server http://127.0.0.1:8000
 """
 import argparse
@@ -22,8 +22,8 @@ def main():
     url = args.server.rstrip("/")
     agent = "sim-endpoint-01"
 
-    # 1) Şüpheli komut satırı (encoded PowerShell)
-    print("[sim] Şüpheli PowerShell süreci...")
+    # 1) Suspicious command line (encoded PowerShell)
+    print("[sim] Suspicious PowerShell process...")
     print(post(url, [{
         "agent_id": agent,
         "event_type": "process",
@@ -35,7 +35,7 @@ def main():
         },
     }]))
 
-    # 2) Bilinen saldırı aracı
+    # 2) Known attack tool
     print("[sim] Mimikatz...")
     print(post(url, [{
         "agent_id": agent,
@@ -43,8 +43,8 @@ def main():
         "data": {"pid": 7777, "name": "mimikatz.exe", "cmdline": "mimikatz.exe sekurlsa::logonpasswords"},
     }]))
 
-    # 3) Brute-force (eşik = 5 / 60s)
-    print("[sim] Brute-force serisi...")
+    # 3) Brute-force (threshold = 5 / 60s)
+    print("[sim] Brute-force series...")
     fails = [{
         "agent_id": agent,
         "event_type": "auth_failure",
@@ -52,8 +52,8 @@ def main():
     } for _ in range(6)]
     print(post(url, fails))
 
-    # 4) Port tarama
-    print("[sim] Port tarama...")
+    # 4) Port scan
+    print("[sim] Port scan...")
     print(post(url, [{
         "agent_id": agent,
         "event_type": "port_scan",
@@ -61,7 +61,7 @@ def main():
                  "ports": list(range(20, 35))},
     }]))
 
-    print("\n[sim] Tamamlandı. Alarmları gör: " + url + "/api/alerts")
+    print("\n[sim] Done. View the alerts: " + url + "/api/alerts")
 
 
 if __name__ == "__main__":

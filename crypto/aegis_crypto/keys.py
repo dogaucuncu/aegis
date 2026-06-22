@@ -1,10 +1,10 @@
-"""Anahtar üretimi, kaydetme ve yükleme.
+"""Key generation, saving and loading.
 
-- Ed25519 imza anahtar çifti (PEM)
-- AES-256 simetrik anahtar (base64)
+- Ed25519 signing key pair (PEM)
+- AES-256 symmetric key (base64)
 
-Not (Faz 2 dev-grade): AES anahtarı ajan↔sunucu arasında önceden paylaşılmış kabul
-edilir. Üretimde ECDH ile oturum başına anahtar türetilmesi önerilir.
+Note (Phase 2, dev-grade): the AES key is assumed to be pre-shared between agent and
+server. In production, deriving a per-session key via ECDH is recommended.
 """
 import base64
 import os
@@ -50,7 +50,7 @@ def load_public_key(path: str | Path) -> Ed25519PublicKey:
     return serialization.load_pem_public_key(Path(path).read_bytes())
 
 
-# --- X25519 (ECDH anahtar değişimi) ---
+# --- X25519 (ECDH key exchange) ---
 def generate_x25519() -> X25519PrivateKey:
     return X25519PrivateKey.generate()
 
@@ -80,7 +80,7 @@ def load_x25519_public(path: str | Path) -> X25519PublicKey:
 
 
 def generate_aes_key() -> bytes:
-    return os.urandom(32)  # AES-256 (artık yalnızca testler/araçlar için)
+    return os.urandom(32)  # AES-256 (now only for tests/tools)
 
 
 def save_aes_key(key: bytes, path: str | Path) -> None:

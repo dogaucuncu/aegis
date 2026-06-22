@@ -1,4 +1,4 @@
-# Aegis SOC sunucusu. Derleme bağlamı repo kökü olmalı:
+# Aegis SOC server. The build context must be the repo root:
 #   docker build -f server/Dockerfile -t aegis-soc .
 FROM python:3.13-slim
 WORKDIR /app

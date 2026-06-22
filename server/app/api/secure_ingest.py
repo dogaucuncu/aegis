@@ -1,11 +1,11 @@
-"""Güvenli telemetri alımı: AES-GCM çözme + Ed25519 imza doğrulama + replay koruması.
+"""Secure telemetry ingestion: AES-GCM decryption + Ed25519 signature verification + replay protection.
 
-Akış:
-  1. Ajan ID'sine göre kayıtlı AES + açık anahtarı bul.
-  2. Zarfı AES-GCM ile çöz (gizlilik + bütünlük).
-  3. Zaman damgası tazeliği + nonce tekrar (replay) kontrolü.
-  4. Her olayın Ed25519 imzasını doğrula (kimlik + bütünlük).
-  5. Doğrulananları hash-zincirine yaz ve kuralları çalıştır.
+Flow:
+  1. Look up the registered AES + public key by agent ID.
+  2. Decrypt the envelope with AES-GCM (confidentiality + integrity).
+  3. Check timestamp freshness + nonce replay.
+  4. Verify each event's Ed25519 signature (identity + integrity).
+  5. Write the verified events to the hash chain and run the rules.
 """
 import binascii
 import datetime as dt
@@ -24,7 +24,7 @@ from ..utils import now_utc
 router = APIRouter(prefix="/api", tags=["secure"])
 
 _FIELDS = ("agent_id", "event_type", "timestamp", "data")
-FRESHNESS_SEC = 300  # ±5 dk tazelik penceresi
+FRESHNESS_SEC = 300  # ±5 min freshness window
 
 
 @router.post("/ingest/secure", response_model=schemas.IngestResult)
@@ -32,38 +32,38 @@ def ingest_secure(env: schemas.SecureEnvelope, db: Session = Depends(get_db)):
     aes_key = keystore.derive_agent_aes(env.agent_id)
     pub_key = keystore.load_agent_pubkey(env.agent_id)
     if aes_key is None or pub_key is None:
-        raise HTTPException(status_code=401, detail=f"Ajan kayıtlı değil: {env.agent_id}")
+        raise HTTPException(status_code=401, detail=f"Agent not registered: {env.agent_id}")
 
     try:
         plaintext = aesgcm.decrypt(aes_key, env.nonce, env.ciphertext)
-    except (InvalidTag, binascii.Error, ValueError):  # yanlış anahtar / etiket / bozuk b64
-        raise HTTPException(status_code=400, detail="Çözme başarısız (anahtar/etiket uyuşmazlığı)")
+    except (InvalidTag, binascii.Error, ValueError):  # wrong key / tag / corrupt b64
+        raise HTTPException(status_code=400, detail="Decryption failed (key/tag mismatch)")
 
     try:
         payload = json.loads(plaintext)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Geçersiz JSON içeriği")
+        raise HTTPException(status_code=400, detail="Invalid JSON content")
 
-    # --- Replay koruması: zaman damgası tazeliği + nonce tekrarı ---
+    # --- Replay protection: timestamp freshness + nonce replay ---
     now = now_utc()
     ts_str = payload.get("ts")
     if not ts_str:
-        raise HTTPException(status_code=400, detail="Eksik zaman damgası (ts)")
+        raise HTTPException(status_code=400, detail="Missing timestamp (ts)")
     try:
         ts = dt.datetime.fromisoformat(str(ts_str))
     except ValueError:
-        raise HTTPException(status_code=400, detail="Geçersiz zaman damgası (ts)")
+        raise HTTPException(status_code=400, detail="Invalid timestamp (ts)")
     if abs((now - ts).total_seconds()) > FRESHNESS_SEC:
-        raise HTTPException(status_code=401, detail="Bayat zaman damgası (replay olabilir)")
+        raise HTTPException(status_code=401, detail="Stale timestamp (possible replay)")
 
     db.add(models.SeenNonce(agent_id=env.agent_id, nonce=env.nonce, created_at=now))
     try:
         db.flush()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Tekrar (replay) tespit edildi")
+        raise HTTPException(status_code=409, detail="Replay detected")
 
-    # Eski nonce'ları temizle (TTL).
+    # Clean up old nonces (TTL).
     db.query(models.SeenNonce).filter(
         models.SeenNonce.created_at < now - dt.timedelta(seconds=FRESHNESS_SEC)
     ).delete()
@@ -80,7 +80,7 @@ def ingest_secure(env: schemas.SecureEnvelope, db: Session = Depends(get_db)):
         if not sig or not signing.verify(pub_key, cbytes, sig):
             raise HTTPException(
                 status_code=401,
-                detail=f"İmza doğrulanamadı (event_type={ev.get('event_type')})",
+                detail=f"Signature could not be verified (event_type={ev.get('event_type')})",
             )
         clean_events.append({k: ev.get(k) for k in _FIELDS})
         signatures.append(sig)

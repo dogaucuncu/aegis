@@ -1,9 +1,9 @@
-"""Aegis Lab — KASITLI ZAFİYETLİ hedef uygulama.
+"""Aegis Lab — INTENTIONALLY VULNERABLE target application.
 
-⚠️ Yalnızca yerel test/eğitim içindir. Üretimde ASLA çalıştırmayın.
-İçerir:
-  - /user?id=   : SQL injection (string birleştirme + hata mesajı sızıntısı)
-  - /search?q=  : yansıyan (reflected) XSS — kaçışsız çıktı
+⚠️ For local test/education only. NEVER run in production.
+Contains:
+  - /user?id=   : SQL injection (string concatenation + error message leakage)
+  - /search?q=  : reflected XSS — unescaped output
 """
 import os
 import sqlite3
@@ -30,7 +30,7 @@ def init_db():
 @app.route("/")
 def index():
     return (
-        "<h1>Aegis Lab (kasitli zafiyetli)</h1>"
+        "<h1>Aegis Lab (intentionally vulnerable)</h1>"
         "<ul><li><a href='/user?id=1'>/user?id=1</a> (SQLi)</li>"
         "<li><a href='/search?q=test'>/search?q=test</a> (XSS)</li>"
         "<li><a href='/redirect?next=home'>/redirect?next=</a> (Open Redirect)</li></ul>"
@@ -40,13 +40,13 @@ def index():
 @app.route("/user")
 def user():
     uid = request.args.get("id", "")
-    # ZAFİYET: kullanıcı girdisi sorguya doğrudan birleştiriliyor
+    # VULNERABILITY: user input is concatenated directly into the query
     query = f"SELECT id, username FROM users WHERE id = '{uid}'"
     conn = sqlite3.connect(DB)
     try:
         rows = conn.execute(query).fetchall()
         return {"query": query, "rows": rows}
-    except Exception as exc:  # ZAFİYET: hata mesajı dışarı sızıyor (error-based SQLi)
+    except Exception as exc:  # VULNERABILITY: the error message leaks out (error-based SQLi)
         return Response(f"SQL error: {exc}", status=500, mimetype="text/plain")
     finally:
         conn.close()
@@ -55,13 +55,13 @@ def user():
 @app.route("/search")
 def search():
     term = request.args.get("q", "")
-    # ZAFİYET: kullanıcı girdisi kaçışsız HTML'e basılıyor (reflected XSS)
-    return f"<html><body><h2>Arama sonuclari: {term}</h2></body></html>"
+    # VULNERABILITY: user input is written to HTML without escaping (reflected XSS)
+    return f"<html><body><h2>Search results: {term}</h2></body></html>"
 
 
 @app.route("/redirect")
 def open_redirect():
-    # ZAFİYET: kullanıcı girdisi doğrulanmadan Location'a yazılıyor (open redirect)
+    # VULNERABILITY: user input is written to Location without validation (open redirect)
     return redirect(request.args.get("next", "/"), code=302)
 
 
