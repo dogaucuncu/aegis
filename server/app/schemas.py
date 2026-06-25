@@ -1,8 +1,18 @@
 """Pydantic schemas (request/response contracts)."""
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict
+
+
+class AlertStatus(str, Enum):
+    """Allowed alert lifecycle states (SOC triage workflow)."""
+
+    open = "open"
+    acknowledged = "acknowledged"
+    resolved = "resolved"
+    closed = "closed"
 
 
 class EventIn(BaseModel):
@@ -41,6 +51,29 @@ class AlertOut(BaseModel):
     status: str
     count: int = 1
     last_seen: Optional[datetime] = None
+    assignee: Optional[str] = None
+    note: Optional[str] = None
+    tags: Optional[str] = None
+    tactic: Optional[str] = None
+    technique: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TriageIn(BaseModel):
+    """Partial triage update; only provided fields are changed."""
+
+    assignee: Optional[str] = None
+    note: Optional[str] = None
+    tags: Optional[str] = None
+
+
+class AgentOut(BaseModel):
+    agent_id: str
+    first_seen: datetime
+    last_seen: datetime
+    version: Optional[str] = None
+    event_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
-from . import integrity, models, rules
+from . import integrity, models, notifications, rules
 from .utils import now_utc
 
 # The hash chain is global; to prevent concurrent appends from forking the chain,
@@ -57,6 +57,8 @@ def _append_locked(
 ) -> Tuple[int, int]:
     ingested = 0
     alerts_created = 0
+    agent_counts: Dict[str, int] = {}
+    new_high_alerts: List[Tuple[str, str, str, str]] = []
 
     head = _chain_head(db)
     prev_hash = head.last_hash
@@ -82,6 +84,7 @@ def _append_locked(
         db.flush()
         prev_hash = h
         ingested += 1
+        agent_counts[agent_id] = agent_counts.get(agent_id, 0) + 1
 
         for alert in rules.evaluate(obj, db):
             existing = (
@@ -103,7 +106,36 @@ def _append_locked(
                 alert.last_seen = now_utc()
                 db.add(alert)
                 alerts_created += 1
+                if alert.severity == "high":
+                    new_high_alerts.append(
+                        (alert.rule_id, alert.severity, alert.title, alert.description or "")
+                    )
 
+    _touch_agents(db, agent_counts)
     head.last_hash = prev_hash
     db.commit()
+
+    # Fire notifications after the transaction commits (no-op unless a webhook is configured).
+    for rule_id, severity, title, description in new_high_alerts:
+        notifications.notify_alert(rule_id, severity, title, description)
+
     return ingested, alerts_created
+
+
+def _touch_agents(db: Session, agent_counts: Dict[str, int]) -> None:
+    """Upsert agent heartbeat/last_seen + event counters for the batch."""
+    now = now_utc()
+    for agent_id, count in agent_counts.items():
+        agent = db.get(models.Agent, agent_id)
+        if agent is None:
+            db.add(
+                models.Agent(
+                    agent_id=agent_id,
+                    first_seen=now,
+                    last_seen=now,
+                    event_count=count,
+                )
+            )
+        else:
+            agent.last_seen = now
+            agent.event_count = (agent.event_count or 0) + count

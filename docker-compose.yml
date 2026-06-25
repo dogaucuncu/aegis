@@ -1,5 +1,5 @@
 # Aegis — containerized run (Phase 5).
-# NOTE: This configuration has not been live-tested since Docker is not available on the dev machine.
+# NOTE: Not live-tested (no Docker on the dev machine); validated with `docker compose config`.
 #   docker compose up --build
 services:
   db:
@@ -7,8 +7,14 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: aegis
-    ports:
-      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aegis"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
   soc:
     build:
@@ -16,10 +22,20 @@ services:
       dockerfile: server/Dockerfile
     environment:
       AEGIS_DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/aegis
+      AEGIS_API_KEYS: ${AEGIS_API_KEYS:-}
+      AEGIS_REQUIRE_AUTH_READS: ${AEGIS_REQUIRE_AUTH_READS:-0}
+      AEGIS_CORS_ORIGINS: ${AEGIS_CORS_ORIGINS:-http://localhost:8080}
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   ml:
     build:
@@ -27,3 +43,19 @@ services:
       dockerfile: ml/Dockerfile
     ports:
       - "8001:8001"
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "8080:80"
+    depends_on:
+      - soc
+    restart: unless-stopped
+
+volumes:
+  pgdata:

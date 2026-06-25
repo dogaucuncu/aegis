@@ -5,10 +5,10 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import config
-from .api import alerts, crypto, events, ingest, secure_ingest, stream
-from .auth import require_api_key
+from .api import agents, alerts, crypto, events, health, ingest, secure_ingest, stream
+from .auth import require_api_key, require_read_auth
 from .database import Base, engine
-from .middleware import RateLimitMiddleware
+from .middleware import RateLimitMiddleware, RequestLogMiddleware
 
 log = logging.getLogger("aegis.server")
 
@@ -29,14 +29,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RateLimitMiddleware, limit_per_min=config.RATE_LIMIT_PER_MIN)
+# Added last -> outermost: logs every request (including rate-limited 429s) with a correlation id.
+app.add_middleware(RequestLogMiddleware)
 
-# Event-injecting endpoints require an API key (if auth is enabled). Read endpoints are open.
+# Event-injecting endpoints always require an API key (when auth is enabled).
 app.include_router(ingest.router, dependencies=[Depends(require_api_key)])
 app.include_router(secure_ingest.router, dependencies=[Depends(require_api_key)])
-app.include_router(events.router)
-app.include_router(alerts.router)
-app.include_router(crypto.router)
-app.include_router(stream.router)
+
+# Read endpoints: open by default (demo dashboard); protected when AEGIS_REQUIRE_AUTH_READS=1
+# (the dependency checks the flag per-request).
+read_deps = [Depends(require_read_auth)]
+app.include_router(events.router, dependencies=read_deps)
+app.include_router(alerts.router, dependencies=read_deps)
+app.include_router(agents.router, dependencies=read_deps)
+app.include_router(crypto.router, dependencies=read_deps)
+app.include_router(stream.router, dependencies=read_deps)
+
+# Health check stays unauthenticated for orchestrator liveness probes.
+app.include_router(health.router)
 
 
 @app.get("/")

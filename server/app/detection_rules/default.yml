@@ -5,6 +5,8 @@
 - id: suspicious-process-name
   event_type: process
   severity: high
+  tactic: Credential Access
+  technique: T1003
   conditions:
     - field: data.name
       op: in
@@ -17,6 +19,8 @@
 - id: suspicious-cmdline
   event_type: process
   severity: high
+  tactic: Execution
+  technique: T1059.001
   conditions:
     - field: data.cmdline
       op: contains_any
@@ -30,6 +34,8 @@
 - id: port-scan
   event_type: port_scan
   severity: medium
+  tactic: Discovery
+  technique: T1046
   conditions:
     - field: data.ports
       op: len_gte
@@ -41,6 +47,8 @@
 - id: brute-force
   event_type: auth_failure
   severity: high
+  tactic: Credential Access
+  technique: T1110
   window:
     seconds: 60
     threshold: 5
@@ -61,6 +69,8 @@
 - id: ml-phishing
   event_type: phishing
   severity: high
+  tactic: Initial Access
+  technique: T1566.002
   title: "ML: Phishing URL tespit edildi"
   description: "url={data.url} skor={data.score}"
   dedup: "phishing|{data.url}"

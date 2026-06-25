@@ -1,7 +1,9 @@
 """Event query endpoints + log integrity verification."""
+from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from .. import integrity, models, schemas
@@ -14,22 +16,37 @@ router = APIRouter(prefix="/api", tags=["events"])
 def list_events(
     agent_id: Optional[str] = None,
     event_type: Optional[str] = None,
+    q: Optional[str] = Query(None, description="case-insensitive match on agent_id/event_type"),
+    since: Optional[datetime] = None,
+    until: Optional[datetime] = None,
     limit: int = Query(100, le=1000),
     db: Session = Depends(get_db),
 ):
-    q = db.query(models.Event)
+    query = db.query(models.Event)
     if agent_id:
-        q = q.filter(models.Event.agent_id == agent_id)
+        query = query.filter(models.Event.agent_id == agent_id)
     if event_type:
-        q = q.filter(models.Event.event_type == event_type)
-    return q.order_by(models.Event.id.desc()).limit(limit).all()
+        query = query.filter(models.Event.event_type == event_type)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(models.Event.agent_id.ilike(like), models.Event.event_type.ilike(like))
+        )
+    if since:
+        query = query.filter(models.Event.timestamp >= since)
+    if until:
+        query = query.filter(models.Event.timestamp <= until)
+    return query.order_by(models.Event.id.desc()).limit(limit).all()
 
 
 @router.get("/integrity/verify", response_model=schemas.IntegrityResult)
 def verify_integrity(db: Session = Depends(get_db)):
-    """Recomputes the entire hash chain from the start and reports whether tampering occurred."""
+    """Recomputes the hash chain over retained events and reports whether tampering occurred.
+
+    Anchors on the earliest remaining event's stored prev_hash so the chain stays verifiable
+    after retention pruning (see maintenance.prune)."""
     events = db.query(models.Event).order_by(models.Event.id.asc()).all()
-    prev_hash = None
+    prev_hash = events[0].prev_hash if events else None
     for ev in events:
         expected = integrity.compute_hash(
             prev_hash, ev.agent_id, ev.event_type, ev.timestamp, ev.data

@@ -27,6 +27,19 @@ jobs:
       - name: Lint (ruff)
         run: ruff check .
 
+      - name: Dependency audit (pip-audit)
+        # Advisory-only for now (does not block): surfaces known CVEs in dependencies.
+        # Flip continue-on-error to false to make vulnerable deps fail the build.
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit --desc \
+            -r requirements-dev.txt \
+            -r server/requirements.txt \
+            -r agent/requirements.txt \
+            -r scanner/requirements.txt \
+            -r ml/requirements.txt
+
       - name: Tests (pytest)
         run: pytest -q
 

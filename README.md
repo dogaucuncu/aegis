@@ -186,8 +186,11 @@ cd F:\aegis\server; uvicorn app.main:app --port 8000
 
 ### Docker (containerized)
 ```powershell
-docker compose up --build      # db (postgres) + soc + ml
+docker compose up --build      # db (postgres) + soc + ml + ui (nginx, :8080)
 ```
+The compose stack uses a persistent `pgdata` volume, `pg_isready`/`/health` healthchecks,
+`depends_on: service_healthy`, and restart policies; the UI is built and served by nginx on
+**:8080**. Validated with `docker compose config` (YAML).
 > ⚠️ Not tested live because Docker is not installed on this machine.
 
 ## Development, Testing & Security Hardening
@@ -201,14 +204,33 @@ py -3.13 -m venv .venv-dev
 ```
 - **Tests:** `tests/` — rule engine, crypto round-trip + forged signature, hash-chain,
   secure ingestion (valid/forged/wrong-key/replay/stale), auth, scanner SQLi/XSS, ML.
-- **CI:** [.github/workflows/ci.yml](.github/workflows/ci.yml) — ruff + pytest + ml-train smoke.
+- **CI:** [.github/workflows/ci.yml](.github/workflows/ci.yml) — ruff + pytest + ml-train smoke +
+  `pip-audit`; plus [CodeQL](.github/workflows/codeql.yml) (SAST) and [Dependabot](.github/dependabot.yml).
 - **Migrations:** `cd server; alembic upgrade head` (use `AEGIS_AUTO_CREATE=0` in production).
-- **API security:** `AEGIS_API_KEYS` (X-API-Key), `AEGIS_CORS_ORIGINS`, `AEGIS_RATE_LIMIT_PER_MIN`
-  — see [.env.example](.env.example). All env vars control auth/CORS/rate-limit.
+- **API security:** `AEGIS_API_KEYS` (X-API-Key, constant-time compare, shown in `/docs`),
+  `AEGIS_REQUIRE_AUTH_READS` (also gate read endpoints), `AEGIS_CORS_ORIGINS`,
+  `AEGIS_RATE_LIMIT_PER_MIN` — see [.env.example](.env.example).
+- **Operations:** `GET /health` (DB ping, for liveness probes); `X-Request-ID` correlation id on
+  every response; alert status changes are written to an audit log.
+- **Retention:** `AEGIS_RETENTION_DAYS` + `python scripts/prune.py --days N` (optionally
+  `--include-events`; integrity verification re-anchors on the earliest retained event).
 
-Hardening applied: deprecation cleanup, pytest+CI, API-key auth + CORS + rate-limit, replay
-protection, ECDH key management, YAML rule engine, real NSL-KDD data, alert correlation/dedup
-(repeated findings become a single alert + counter), real-time SSE dashboard.
+### SOC features
+- **Agent inventory:** every ingest updates an agent heartbeat; `GET /api/agents` + a dashboard
+  panel show which agents are online (last-seen) and their event counts.
+- **Triage:** assignee / note / tags via `POST /api/alerts/{id}/triage`; alert status uses the
+  `open / acknowledged / resolved / closed` workflow.
+- **Notifications:** set `AEGIS_WEBHOOK_URL` to receive a Slack-compatible webhook on each new
+  high-severity alert.
+- **MITRE ATT&CK:** detection rules carry `tactic`/`technique`, surfaced on alerts and as a UI badge.
+- **Filtering:** `/api/alerts` & `/api/events` accept `q` (text), `since`, `until`; the alerts
+  table has a severity/status/search filter bar.
+
+Hardening applied: deprecation cleanup, pytest+CI (+pip-audit/CodeQL/Dependabot), API-key auth
+(constant-time) + optional read-auth + CORS + rate-limit, replay protection, ECDH key management,
+YAML rule engine with MITRE mapping, real NSL-KDD data, alert correlation/dedup + triage workflow,
+agent heartbeat inventory, webhook notifications, retention pruning, structured request logging +
+audit trail, real-time SSE dashboard.
 
 ## Documentation
 - Architecture: [docs/architecture.svg](docs/architecture.svg)
