@@ -1,5 +1,6 @@
 # Dependabot — automated dependency update PRs.
 # Covers every Python requirements file, the UI npm project, and the GitHub Actions.
+# Updates are GROUPED (one PR per ecosystem/dir) and capped to keep PR noise low.
 # NOTE: lab/vulnerable_app is intentionally vulnerable and is deliberately excluded.
 version: 2
 updates:
@@ -7,27 +8,61 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      pip-root:
+        patterns: ["*"]
+
   - package-ecosystem: pip
     directory: "/server"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      pip-server:
+        patterns: ["*"]
+
   - package-ecosystem: pip
     directory: "/agent"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      pip-agent:
+        patterns: ["*"]
+
   - package-ecosystem: pip
     directory: "/scanner"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      pip-scanner:
+        patterns: ["*"]
+
   - package-ecosystem: pip
     directory: "/ml"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      pip-ml:
+        patterns: ["*"]
+
   - package-ecosystem: npm
     directory: "/ui"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      npm-ui:
+        patterns: ["*"]
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns: ["*"]
