@@ -61,6 +61,22 @@ class SeenNonce(Base):
     created_at = Column(DateTime, default=now_utc, index=True)
 
 
+class Agent(Base):
+    """Endpoint agent inventory + heartbeat.
+
+    Upserted on every ingest (plain + secure share ingest_service), so the dashboard can show
+    which agents are online and when they were last seen.
+    """
+
+    __tablename__ = "agents"
+
+    agent_id = Column(String(128), primary_key=True)
+    first_seen = Column(DateTime, default=now_utc)
+    last_seen = Column(DateTime, default=now_utc, index=True)
+    version = Column(String(32), nullable=True)
+    event_count = Column(Integer, default=0, nullable=False)
+
+
 class Alert(Base):
     """An alert produced by the rule engine from an event."""
 
@@ -80,3 +96,12 @@ class Alert(Base):
     dedup_key = Column(String(160), index=True)
     count = Column(Integer, default=1, nullable=False)
     last_seen = Column(DateTime, default=now_utc, index=True)
+
+    # Triage workflow (set by analysts via /api/alerts/{id}/triage).
+    assignee = Column(String(128), nullable=True)
+    note = Column(Text, nullable=True)
+    tags = Column(String(256), nullable=True)  # comma-separated
+
+    # MITRE ATT&CK mapping carried from the matching rule.
+    tactic = Column(String(64), nullable=True)
+    technique = Column(String(32), nullable=True)

@@ -1,7 +1,9 @@
 """Event query endpoints + log integrity verification."""
+from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from .. import integrity, models, schemas
@@ -14,15 +16,27 @@ router = APIRouter(prefix="/api", tags=["events"])
 def list_events(
     agent_id: Optional[str] = None,
     event_type: Optional[str] = None,
+    q: Optional[str] = Query(None, description="case-insensitive match on agent_id/event_type"),
+    since: Optional[datetime] = None,
+    until: Optional[datetime] = None,
     limit: int = Query(100, le=1000),
     db: Session = Depends(get_db),
 ):
-    q = db.query(models.Event)
+    query = db.query(models.Event)
     if agent_id:
-        q = q.filter(models.Event.agent_id == agent_id)
+        query = query.filter(models.Event.agent_id == agent_id)
     if event_type:
-        q = q.filter(models.Event.event_type == event_type)
-    return q.order_by(models.Event.id.desc()).limit(limit).all()
+        query = query.filter(models.Event.event_type == event_type)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(models.Event.agent_id.ilike(like), models.Event.event_type.ilike(like))
+        )
+    if since:
+        query = query.filter(models.Event.timestamp >= since)
+    if until:
+        query = query.filter(models.Event.timestamp <= until)
+    return query.order_by(models.Event.id.desc()).limit(limit).all()
 
 
 @router.get("/integrity/verify", response_model=schemas.IntegrityResult)

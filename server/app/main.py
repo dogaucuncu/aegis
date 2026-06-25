@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import config
-from .api import alerts, crypto, events, health, ingest, secure_ingest, stream
+from .api import agents, alerts, crypto, events, health, ingest, secure_ingest, stream
 from .auth import require_api_key, require_read_auth
 from .database import Base, engine
 from .middleware import RateLimitMiddleware, RequestLogMiddleware
@@ -41,6 +41,7 @@ app.include_router(secure_ingest.router, dependencies=[Depends(require_api_key)]
 read_deps = [Depends(require_read_auth)]
 app.include_router(events.router, dependencies=read_deps)
 app.include_router(alerts.router, dependencies=read_deps)
+app.include_router(agents.router, dependencies=read_deps)
 app.include_router(crypto.router, dependencies=read_deps)
 app.include_router(stream.router, dependencies=read_deps)
 

@@ -13,6 +13,25 @@ export interface Alert {
   status: string;
   count: number;
   last_seen?: string | null;
+  assignee?: string | null;
+  note?: string | null;
+  tags?: string | null;
+  tactic?: string | null;
+  technique?: string | null;
+}
+
+export interface Agent {
+  agent_id: string;
+  first_seen: string;
+  last_seen: string;
+  version?: string | null;
+  event_count: number;
+}
+
+export interface Triage {
+  assignee?: string;
+  note?: string;
+  tags?: string;
 }
 
 export interface AegisEvent {
@@ -33,6 +52,11 @@ export interface Integrity {
   message: string;
 }
 
+// Server timestamps are naive UTC (no tz suffix); parse them as UTC, not browser-local.
+export function parseServerDate(ts: string): Date {
+  return new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(ts) ? ts : ts + "Z");
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(BASE + path);
   if (!res.ok) throw new Error(`${path} -> HTTP ${res.status}`);
@@ -43,7 +67,14 @@ export const api = {
   base: BASE,
   alerts: () => get<Alert[]>("/api/alerts?limit=200"),
   events: () => get<AegisEvent[]>("/api/events?limit=200"),
+  agents: () => get<Agent[]>("/api/agents"),
   integrity: () => get<Integrity>("/api/integrity/verify"),
   updateAlertStatus: (id: number, status: string) =>
     fetch(`${BASE}/api/alerts/${id}/status?status=${status}`, { method: "POST" }),
+  updateAlertTriage: (id: number, body: Triage) =>
+    fetch(`${BASE}/api/alerts/${id}/triage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
 };

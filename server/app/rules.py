@@ -121,6 +121,8 @@ def evaluate(event: models.Event, db: Session) -> List[models.Alert]:
                 title=title,
                 description=_interpolate(rule.get("description", ""), event, extra),
                 dedup_key=dedup_key,
+                tactic=rule.get("tactic"),
+                technique=rule.get("technique"),
             )
         )
     return alerts

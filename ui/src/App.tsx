@@ -1,12 +1,13 @@
 import { useCallback, useRef, useState } from "react";
 import { api } from "./api";
-import type { Alert, AegisEvent, Integrity } from "./api";
+import type { Alert, AegisEvent, Agent, Integrity, Triage } from "./api";
 import { usePolling } from "./hooks/usePolling";
 import { useSSE } from "./hooks/useSSE";
 import { StatCard } from "./components/StatCard";
 import { IntegrityBadge } from "./components/IntegrityBadge";
 import { AlertsTable } from "./components/AlertsTable";
 import { EventsTable } from "./components/EventsTable";
+import { AgentsPanel } from "./components/AgentsPanel";
 import { ScanPanel } from "./components/ScanPanel";
 import { MlPanel } from "./components/MlPanel";
 import { SeverityChart } from "./components/SeverityChart";
@@ -26,6 +27,7 @@ export default function App() {
   // Since SSE drives live updates, polling remains as a slow fallback.
   const alertsQ = usePolling<Alert[]>(api.alerts, 15000);
   const eventsQ = usePolling<AegisEvent[]>(api.events, 15000);
+  const agentsQ = usePolling<Agent[]>(api.agents, 15000);
   const integrityQ = usePolling<Integrity>(api.integrity, 15000);
 
   const [liveCount, setLiveCount] = useState(0);
@@ -40,6 +42,7 @@ export default function App() {
       refreshTimer.current = null;
       alertsQ.refresh();
       eventsQ.refresh();
+      agentsQ.refresh();
       integrityQ.refresh();
       setLastUpdate(new Date());
     }, 400);
@@ -47,6 +50,7 @@ export default function App() {
 
   const alerts = alertsQ.data ?? [];
   const events = eventsQ.data ?? [];
+  const agents = agentsQ.data ?? [];
   const highCount = alerts.filter((a) => a.severity === "high").length;
   const openCount = alerts.filter((a) => a.status === "open").length;
   const connected = !alertsQ.error;
@@ -54,6 +58,14 @@ export default function App() {
   const handleStatusChange = useCallback(
     async (id: number, status: string) => {
       await api.updateAlertStatus(id, status);
+      alertsQ.refresh();
+    },
+    [alertsQ],
+  );
+
+  const handleTriage = useCallback(
+    async (id: number, body: Triage) => {
+      await api.updateAlertTriage(id, body);
       alertsQ.refresh();
     },
     [alertsQ],
@@ -177,10 +189,19 @@ export default function App() {
         </div>
       </div>
 
+      {/* Agent inventory */}
+      <div className="mb-6 animate-fade-in-up" style={{ animationDelay: "320ms" }}>
+        <AgentsPanel agents={agents} />
+      </div>
+
       {/* Tables */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="animate-fade-in-up" style={{ animationDelay: "340ms" }}>
-          <AlertsTable alerts={alerts} onStatusChange={handleStatusChange} />
+          <AlertsTable
+            alerts={alerts}
+            onStatusChange={handleStatusChange}
+            onTriage={handleTriage}
+          />
         </div>
         <div className="animate-fade-in-up" style={{ animationDelay: "380ms" }}>
           <EventsTable events={events} />

@@ -42,3 +42,6 @@ RATE_LIMIT_PER_MIN = int(os.getenv("AEGIS_RATE_LIMIT_PER_MIN", "0"))
 
 # Retention window in days for the prune job (0 = keep everything). Used by scripts/prune.py.
 RETENTION_DAYS = int(os.getenv("AEGIS_RETENTION_DAYS", "0"))
+
+# Slack-compatible webhook for new high-severity alerts (empty = notifications disabled).
+WEBHOOK_URL = os.getenv("AEGIS_WEBHOOK_URL", "").strip()
