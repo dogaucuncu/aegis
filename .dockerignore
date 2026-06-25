@@ -1,0 +1,27 @@
+# Keep build contexts small and avoid leaking venvs/secrets/data into images.
+**/.venv
+**/.venv-dev
+.venv-dev
+**/__pycache__
+**/*.py[cod]
+*.egg-info
+.git
+.github
+.pytest_cache
+.ruff_cache
+.mypy_cache
+**/node_modules
+ui/dist
+server/data
+ml/models
+ml/data
+certs
+server/keys
+agent/secrets
+*.db
+*.sqlite3
+graphify-out
+.claude
+docs/screenshots
+lab/watched
+lab/auth.log

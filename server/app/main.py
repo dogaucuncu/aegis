@@ -8,7 +8,7 @@ from . import config
 from .api import alerts, crypto, events, health, ingest, secure_ingest, stream
 from .auth import require_api_key, require_read_auth
 from .database import Base, engine
-from .middleware import RateLimitMiddleware
+from .middleware import RateLimitMiddleware, RequestLogMiddleware
 
 log = logging.getLogger("aegis.server")
 
@@ -29,6 +29,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RateLimitMiddleware, limit_per_min=config.RATE_LIMIT_PER_MIN)
+# Added last -> outermost: logs every request (including rate-limited 429s) with a correlation id.
+app.add_middleware(RequestLogMiddleware)
 
 # Event-injecting endpoints always require an API key (when auth is enabled).
 app.include_router(ingest.router, dependencies=[Depends(require_api_key)])

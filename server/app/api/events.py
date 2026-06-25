@@ -27,9 +27,12 @@ def list_events(
 
 @router.get("/integrity/verify", response_model=schemas.IntegrityResult)
 def verify_integrity(db: Session = Depends(get_db)):
-    """Recomputes the entire hash chain from the start and reports whether tampering occurred."""
+    """Recomputes the hash chain over retained events and reports whether tampering occurred.
+
+    Anchors on the earliest remaining event's stored prev_hash so the chain stays verifiable
+    after retention pruning (see maintenance.prune)."""
     events = db.query(models.Event).order_by(models.Event.id.asc()).all()
-    prev_hash = None
+    prev_hash = events[0].prev_hash if events else None
     for ev in events:
         expected = integrity.compute_hash(
             prev_hash, ev.agent_id, ev.event_type, ev.timestamp, ev.data

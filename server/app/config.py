@@ -39,3 +39,6 @@ REQUIRE_AUTH_READS = os.getenv("AEGIS_REQUIRE_AUTH_READS", "0") != "0"
 
 # WP4: requests-per-minute limit (0 = disabled).
 RATE_LIMIT_PER_MIN = int(os.getenv("AEGIS_RATE_LIMIT_PER_MIN", "0"))
+
+# Retention window in days for the prune job (0 = keep everything). Used by scripts/prune.py.
+RETENTION_DAYS = int(os.getenv("AEGIS_RETENTION_DAYS", "0"))
