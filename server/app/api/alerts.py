@@ -31,11 +31,13 @@ def list_alerts(
     response_model=schemas.AlertOut,
     dependencies=[Depends(require_api_key)],
 )
-def update_status(alert_id: int, status: str, db: Session = Depends(get_db)):
+def update_status(
+    alert_id: int, status: schemas.AlertStatus, db: Session = Depends(get_db)
+):
     alert = db.get(models.Alert, alert_id)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
-    alert.status = status
+    alert.status = status.value
     db.commit()
     db.refresh(alert)
     return alert

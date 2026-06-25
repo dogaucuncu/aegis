@@ -33,5 +33,9 @@ CORS_ORIGINS = _split(
 # WP4: API keys (comma-separated). If empty, auth is DISABLED (demo compatibility) — a warning is logged.
 API_KEYS = set(_split("AEGIS_API_KEYS", ""))
 
+# Require an API key on the read endpoints too (alerts/events/integrity/crypto/stream).
+# Default OFF so the demo dashboard keeps working without a key; turn ON in production.
+REQUIRE_AUTH_READS = os.getenv("AEGIS_REQUIRE_AUTH_READS", "0") != "0"
+
 # WP4: requests-per-minute limit (0 = disabled).
 RATE_LIMIT_PER_MIN = int(os.getenv("AEGIS_RATE_LIMIT_PER_MIN", "0"))
