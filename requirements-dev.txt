@@ -2,9 +2,9 @@
 # Installation:
 #   py -3.13 -m venv .venv-dev
 #   .\.venv-dev\Scripts\python.exe -m pip install -r requirements-dev.txt -e crypto
-pytest==8.3.4
+pytest==9.1.1
 httpx==0.28.1
-ruff==0.8.4
+ruff==0.15.19
 
 -r server/requirements.txt
 -r agent/requirements.txt
