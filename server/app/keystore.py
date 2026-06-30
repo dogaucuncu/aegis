@@ -8,7 +8,9 @@ On the server:
 The AES key is not stored on disk; it is derived via ECDH(server_priv, agent_pub) + HKDF.
 The keys are generated with `scripts/provision_agent.py`.
 """
+import os
 import re
+from pathlib import Path
 from typing import Optional
 
 from aegis_crypto import derive_aes_key, keys
@@ -24,8 +26,19 @@ KEYS_DIR = SERVER_KEYS_DIR / "agents"
 _VALID_AGENT_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 
 
-def _safe_agent_id(agent_id: str) -> bool:
-    return bool(_VALID_AGENT_ID.fullmatch(agent_id))
+def _agent_key_path(agent_id: str, suffix: str) -> Optional[Path]:
+    """Resolve KEYS_DIR/<agent_id><suffix>, refusing anything that escapes KEYS_DIR.
+
+    Two barriers: an allowlist on the id, plus a normalized-path containment check (realpath +
+    startswith) — the latter is the canonical form CodeQL recognizes as a path-traversal barrier.
+    """
+    if not _VALID_AGENT_ID.fullmatch(agent_id):
+        return None
+    base = os.path.realpath(KEYS_DIR)
+    target = os.path.realpath(os.path.join(base, f"{agent_id}{suffix}"))
+    if target != base and not target.startswith(base + os.sep):
+        return None
+    return Path(target)
 
 
 def server_x25519_private():
@@ -41,20 +54,16 @@ def server_x25519_private():
 
 
 def load_agent_pubkey(agent_id: str) -> Optional[Ed25519PublicKey]:
-    if not _safe_agent_id(agent_id):
-        return None
-    path = KEYS_DIR / f"{agent_id}.pub"
-    if not path.exists():
+    path = _agent_key_path(agent_id, ".pub")
+    if path is None or not path.exists():
         return None
     return keys.load_public_key(path)
 
 
 def derive_agent_aes(agent_id: str) -> Optional[bytes]:
     """Derives the AES key from the agent's X25519 public key + the server's private key."""
-    if not _safe_agent_id(agent_id):
-        return None
-    pub_path = KEYS_DIR / f"{agent_id}.x25519.pub"
-    if not pub_path.exists():
+    pub_path = _agent_key_path(agent_id, ".x25519.pub")
+    if pub_path is None or not pub_path.exists():
         return None
     agent_pub = keys.load_x25519_public(pub_path)
     return derive_aes_key(server_x25519_private(), agent_pub)
