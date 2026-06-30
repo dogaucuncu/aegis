@@ -3,6 +3,7 @@
 Can be overridden via environment variables; the defaults are for local/SQLite development.
 """
 import os
+import secrets
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -45,3 +46,25 @@ RETENTION_DAYS = int(os.getenv("AEGIS_RETENTION_DAYS", "0"))
 
 # Slack-compatible webhook for new high-severity alerts (empty = notifications disabled).
 WEBHOOK_URL = os.getenv("AEGIS_WEBHOOK_URL", "").strip()
+
+# --- Login hardening (Milestone 1) ---
+# HS256 signing secret for issued JWTs. If unset, a random per-process secret is used (fine for
+# local/demo; set a stable AEGIS_JWT_SECRET in production so tokens survive restarts).
+JWT_SECRET = os.getenv("AEGIS_JWT_SECRET", "").strip() or secrets.token_urlsafe(32)
+# Account lockout: after this many consecutive failures, lock the account for N seconds.
+AUTH_MAX_FAILS = int(os.getenv("AEGIS_AUTH_MAX_FAILS", "5"))
+AUTH_LOCK_SECONDS = int(os.getenv("AEGIS_AUTH_LOCK_SECONDS", "300"))
+
+# --- Server-side request inspection / WAF (Milestone 2) ---
+# When ON, inbound request URLs are scanned for SQLi/XSS/traversal/cmd-injection signatures and
+# a `waf_detection` event is raised. Default OFF (detection-only; never blocks the request).
+WAF_DETECT = os.getenv("AEGIS_WAF_DETECT", "0") != "0"
+
+# --- Automated response / IP auto-block (Milestone 6) ---
+# When ON, the source IP of an alert whose rule is in AUTO_BLOCK_RULES is added to the blocklist;
+# BlocklistMiddleware then rejects it with 403. Manual blocks via /api/blocklist work regardless.
+AUTO_BLOCK = os.getenv("AEGIS_AUTO_BLOCK", "0") != "0"
+AUTO_BLOCK_RULES = set(_split(
+    "AEGIS_AUTO_BLOCK_RULES",
+    "web-bruteforce,bruteforce-success,canary-triggered,network-flood,waf-signature",
+))

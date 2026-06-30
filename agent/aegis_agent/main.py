@@ -37,6 +37,8 @@ def build_sender(cfg: dict, server_url: str, agent_id: str):
             ca_cert=tls.get("ca_cert"),
             client_cert=tls.get("client_cert"),
             client_key=tls.get("client_key"),
+            use_pfs=cfg.get("pfs", False),
+            pin_sha256=tls.get("pin_sha256"),
         )
     return Sender(server_url, agent_id)
 
@@ -57,6 +59,12 @@ def main():
     collector = TelemetryCollector(
         watch_paths=cfg.get("watch_paths"),
         auth_log=cfg.get("auth_log"),
+        monitor_arp=cfg.get("monitor_arp", False),
+        arp_table_file=cfg.get("arp_table_file"),
+        monitor_flood=cfg.get("monitor_flood", False),
+        flood_window=cfg.get("flood_window", 60),
+        flood_threshold=cfg.get("flood_threshold", 50),
+        canary_paths=cfg.get("canary_paths"),
     )
     sender = build_sender(cfg, server_url, agent_id)
     mode = cfg.get("mode", "plain")

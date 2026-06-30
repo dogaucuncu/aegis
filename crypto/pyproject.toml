@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aegis-crypto"
 version = "0.1.0"
-description = "Aegis shared cryptography utilities (Ed25519 signing, AES-GCM)"
+description = "Aegis shared cryptography utilities (Ed25519 signing, AES-GCM, Argon2, JWT, TOTP)"
 requires-python = ">=3.10"
-dependencies = ["cryptography>=42"]
+dependencies = ["cryptography>=42", "argon2-cffi>=23", "PyJWT>=2.8"]
 
 [tool.setuptools.packages.find]
 where = ["."]

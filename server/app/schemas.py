@@ -95,11 +95,17 @@ class SecureEnvelope(BaseModel):
 
     Decrypted content: {"events": [{agent_id, event_type, timestamp, data, signature}, ...]}
     The signatures are inside the encrypted content (confidential in transit too).
+
+    version 1 (default): static-static ECDH (the long-lived agent+server X25519 keys).
+    version 2: ephemeral-static ECDH (Perfect Forward Secrecy) — `epk` carries the agent's
+               per-message ephemeral X25519 public key (base64 raw bytes).
     """
 
     agent_id: str
     nonce: str
     ciphertext: str
+    version: int = 1
+    epk: Optional[str] = None
 
 
 class SignatureAudit(BaseModel):

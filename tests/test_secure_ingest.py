@@ -98,3 +98,39 @@ def test_secure_stale_timestamp_rejected(client, provisioned):
     old = (dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.timedelta(hours=1)).isoformat()
     env, _ = _envelope(agent, priv, aes, _EV, ts=old)
     assert client.post("/api/ingest/secure", json=env).status_code == 401
+
+
+def _pfs_envelope(agent, priv, server_pub, events, ts=None):
+    """Build a version-2 (PFS) envelope: fresh ephemeral key, AES from ECDH(eph, server_pub)."""
+    from aegis_crypto import pfs
+
+    aes, epk = pfs.sender_session_key(server_pub)
+    signed = []
+    for e in events:
+        cb = canonical.event_canonical(agent, e["event_type"], e["timestamp"], e["data"])
+        signed.append({**e, "agent_id": agent, "signature": signing.sign(priv, cb)})
+    pt = canonical.canonical_bytes({"ts": ts or _now_iso(), "events": signed})
+    nonce, ct = aesgcm.encrypt(aes, pt)
+    return {"agent_id": agent, "nonce": nonce, "ciphertext": ct, "version": 2, "epk": epk}
+
+
+def test_secure_valid_pfs_v2(client, provisioned):
+    """A PFS (ephemeral-static ECDH) envelope decrypts and verifies end-to-end."""
+    from app import keystore
+
+    agent, priv, _aes = provisioned
+    server_pub = keystore.server_x25519_private().public_key()
+    env = _pfs_envelope(agent, priv, server_pub, _EV)
+    assert client.post("/api/ingest/secure", json=env).status_code == 200
+    assert client.get("/api/events").json()[0]["signed"] is True
+
+
+def test_secure_pfs_bad_epk_rejected(client, provisioned):
+    """A malformed ephemeral public key is rejected (400), not a 500."""
+    from app import keystore
+
+    agent, priv, _aes = provisioned
+    server_pub = keystore.server_x25519_private().public_key()
+    env = _pfs_envelope(agent, priv, server_pub, _EV)
+    env["epk"] = "not-a-valid-key"
+    assert client.post("/api/ingest/secure", json=env).status_code == 400

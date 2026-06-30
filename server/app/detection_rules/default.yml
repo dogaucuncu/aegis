@@ -62,6 +62,8 @@
   id_prefix: "vuln-"
   id_field: data.type
   severity_field: data.severity
+  tactic_field: data.tactic
+  technique_field: data.technique
   title: "{data.type} zafiyeti bulundu"
   description: "url={data.url} param={data.param} payload={data.payload} kanit={data.evidence}"
   dedup: "vuln|{data.type}|{data.url}|{data.param}"
@@ -82,9 +84,137 @@
   description: "kaynak={data.source} skor={data.score} {data.note}"
   dedup: "mlnids|{data.source}"
 
+# --- Milestone 5: ML/AI security ---
+# DGA / C2 domain detected by the ML engine (algorithmically generated domain).
+- id: ml-dga
+  event_type: dga_detection
+  severity: high
+  tactic: Command and Control
+  technique: T1568.002
+  conditions:
+    - field: data.score
+      op: gte
+      value: 0.7
+  title: "ML: DGA/C2 domain tespit edildi ({data.domain})"
+  description: "domain={data.domain} skor={data.score}"
+  dedup: "dga|{data.domain}"
+
+# Adversarial evasion: many crafted inputs slipped past a model (robustness gap).
+- id: ml-evasion
+  event_type: ml_evasion
+  severity: medium
+  tactic: Defense Evasion
+  technique: T1027
+  conditions:
+    - field: data.evasion_rate
+      op: gte
+      value: 0.3
+  title: "ML: Adversarial evasion oranı yüksek ({data.model})"
+  description: "model={data.model} evasion_rate={data.evasion_rate} test={data.tested}"
+  dedup: "evasion|{data.model}"
+
+# --- Milestone 6: deception (canary tokens / honeypot) ---
+# Any access to a canary token, decoy file, or honeypot service is an intrusion tripwire.
+- id: canary-triggered
+  event_type: canary_triggered
+  severity: high
+  tactic: Discovery
+  technique: T1083
+  title: "Canary tetiklendi ({data.kind}): {data.token}"
+  description: "kaynak={data.source_ip} kind={data.kind} token={data.token} path={data.path} port={data.port}"
+  dedup: "canary|{data.kind}|{data.source_ip}|{data.token}"
+
 - id: file-integrity
   event_type: file_change
   severity: medium
   title: "Dosya bütünlüğü değişikliği ({data.action})"
   description: "yol={data.path} eylem={data.action} hash={data.hash}"
   dedup: "fim|{data.path}|{data.action}"
+
+# --- Milestone 1: credential-attack kill chain ---
+# Web/login brute-force: many FAILED login attempts in a short window (T1110).
+- id: web-bruteforce
+  event_type: auth_attempt
+  severity: high
+  tactic: Credential Access
+  technique: T1110
+  conditions:
+    - field: data.success
+      op: equals
+      value: false
+  window:
+    seconds: 120
+    threshold: 5
+    group_by: agent_id
+  title: "Login brute-force: {window_count} başarısız deneme / 120s"
+  description: "hedef={data.target} kullanıcı={data.username} kaynak={data.source_ip}"
+  dedup: "webbruteforce|{data.target}"
+
+# A SUCCESSFUL login immediately preceded by >=5 failures for the same username = compromise.
+- id: bruteforce-success
+  type: correlation
+  event_type: auth_attempt
+  severity: high
+  tactic: Credential Access
+  technique: T1110.001
+  conditions:
+    - field: data.success
+      op: equals
+      value: true
+  correlation:
+    prior_event_type: auth_attempt
+    window_seconds: 300
+    threshold: 5
+    group_by: data.username
+    prior_conditions:
+      - field: data.success
+        op: equals
+        value: false
+  title: "Brute-force BAŞARILI: {data.username}@{data.target} ({prior_count} önceki başarısız deneme)"
+  description: "Hesap ele geçirilmiş olabilir — kaynak={data.source_ip}"
+  dedup: "bfsuccess|{data.target}|{data.username}"
+
+# ML UEBA: anomalous login behavior scored by the ML engine (high score = anomalous).
+- id: ml-ueba-anomaly
+  event_type: ueba_anomaly
+  severity: high
+  tactic: Credential Access
+  technique: T1110
+  conditions:
+    - field: data.score
+      op: gte
+      value: 0.7
+  title: "ML: Anormal giriş davranışı ({data.username})"
+  description: "kullanıcı={data.username} skor={data.score} {data.note}"
+  dedup: "ueba|{data.username}"
+
+# --- Milestone 2: server-side WAF signature detection (RequestInspectionMiddleware) ---
+- id: waf-signature
+  event_type: waf_detection
+  severity: high
+  tactic: Initial Access
+  technique: T1190
+  title: "WAF: {data.category} imzası istek URL'sinde ({data.path})"
+  description: "imza={data.signature} kaynak={data.source_ip} path={data.path}"
+  dedup: "waf|{data.category}|{data.source_ip}"
+
+# --- Milestone 3: network-layer detections ---
+# ARP-spoofing / man-in-the-middle (cache poisoning or one MAC claiming many IPs).
+- id: arp-spoofing
+  event_type: arp_change
+  severity: high
+  tactic: Credential Access
+  technique: T1557
+  title: "ARP anomalisi ({data.risk}): {data.ip}{data.mac}"
+  description: "ip={data.ip} eski_mac={data.old_mac} yeni_mac={data.new_mac} mac={data.mac} ips={data.ips}"
+  dedup: "arp|{data.risk}|{data.ip}|{data.mac}"
+
+# Volumetric flood / outbound scan (agent-outbound or server-volumetric).
+- id: network-flood
+  event_type: flood_detected
+  severity: high
+  tactic: Impact
+  technique: T1498
+  title: "Ağ flood/scan: {data.target_ip} ({data.connection_count}/{data.window_sec}s)"
+  description: "kaynak={data.source} hedef={data.target_ip} sayı={data.connection_count}"
+  dedup: "flood|{data.source}|{data.target_ip}"

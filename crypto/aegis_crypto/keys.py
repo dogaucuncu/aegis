@@ -7,6 +7,7 @@ Note (Phase 2, dev-grade): the AES key is assumed to be pre-shared between agent
 server. In production, deriving a per-session key via ECDH is recommended.
 """
 import base64
+import datetime as dt
 import os
 from pathlib import Path
 
@@ -77,6 +78,23 @@ def load_x25519_private(path: str | Path) -> X25519PrivateKey:
 
 def load_x25519_public(path: str | Path) -> X25519PublicKey:
     return serialization.load_pem_public_key(Path(path).read_bytes())
+
+
+def rotate_x25519(priv_path: str | Path, pub_path: str | Path) -> X25519PrivateKey:
+    """Archive the existing X25519 keypair (timestamped .bak) and write a fresh one.
+
+    Returns the new private key. Peers that pinned/cached the old public key must refresh it
+    (Milestone 4 key-rotation hygiene).
+    """
+    priv_path, pub_path = Path(priv_path), Path(pub_path)
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    for p in (priv_path, pub_path):
+        if p.exists():
+            p.replace(p.with_name(p.name + f".{stamp}.bak"))
+    new = generate_x25519()
+    save_x25519_private(new, priv_path)
+    save_x25519_public(new, pub_path)
+    return new
 
 
 def generate_aes_key() -> bytes:

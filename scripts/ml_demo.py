@@ -21,6 +21,12 @@ FLOWS = [
                 "srv_count": 120, "serror_rate": 0.8, "same_srv_rate": 0.1, "dst_host_count": 230}),
 ]
 
+DOMAINS = [
+    "secureshop.com",                 # benign
+    "kq3x9zr7vw2htb8s.top",           # DGA / C2
+    "x7gh21qwerty9zxc.ru",            # DGA / C2
+]
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -44,6 +50,14 @@ def main():
         if r["label"] == "attack":
             detections.append({"event_type": "ml_anomaly",
                                "data": {"source": "flow-demo", "score": r["score"], "note": "high count/serror"}})
+
+    print("\n=== DGA domain scoring ===")
+    for domain in DOMAINS:
+        r = requests.post(args.ml + "/score/domain", json={"domain": domain}, timeout=10).json()
+        print(f"  [{r['label']:6}] {r['score']:.3f}  {domain}")
+        if r["label"] == "dga":
+            detections.append({"event_type": "dga_detection",
+                               "data": {"domain": domain, "score": r["score"]}})
 
     if detections:
         payload = {"events": [{"agent_id": "ml-engine", **d} for d in detections]}

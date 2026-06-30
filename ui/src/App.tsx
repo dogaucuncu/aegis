@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { api } from "./api";
-import type { Alert, AegisEvent, Agent, Integrity, Triage } from "./api";
+import type { Alert, AegisEvent, Agent, Integrity, Stats, BlockedIP, Triage } from "./api";
 import { usePolling } from "./hooks/usePolling";
 import { useSSE } from "./hooks/useSSE";
 import { StatCard } from "./components/StatCard";
@@ -11,6 +11,8 @@ import { AgentsPanel } from "./components/AgentsPanel";
 import { ScanPanel } from "./components/ScanPanel";
 import { MlPanel } from "./components/MlPanel";
 import { SeverityChart } from "./components/SeverityChart";
+import { ThreatOverview } from "./components/ThreatOverview";
+import { BlocklistPanel } from "./components/BlocklistPanel";
 import {
   ShieldCheckIcon,
   ActivityIcon,
@@ -29,6 +31,8 @@ export default function App() {
   const eventsQ = usePolling<AegisEvent[]>(api.events, 15000);
   const agentsQ = usePolling<Agent[]>(api.agents, 15000);
   const integrityQ = usePolling<Integrity>(api.integrity, 15000);
+  const statsQ = usePolling<Stats>(api.stats, 15000);
+  const blocklistQ = usePolling<BlockedIP[]>(api.blocklist, 15000);
 
   const [liveCount, setLiveCount] = useState(0);
   const [lastUpdate, setLastUpdate] = useState(() => new Date());
@@ -44,6 +48,8 @@ export default function App() {
       eventsQ.refresh();
       agentsQ.refresh();
       integrityQ.refresh();
+      statsQ.refresh();
+      blocklistQ.refresh();
       setLastUpdate(new Date());
     }, 400);
   });
@@ -51,6 +57,7 @@ export default function App() {
   const alerts = alertsQ.data ?? [];
   const events = eventsQ.data ?? [];
   const agents = agentsQ.data ?? [];
+  const blocked = blocklistQ.data ?? [];
   const highCount = alerts.filter((a) => a.severity === "high").length;
   const openCount = alerts.filter((a) => a.status === "open").length;
   const connected = !alertsQ.error;
@@ -69,6 +76,15 @@ export default function App() {
       alertsQ.refresh();
     },
     [alertsQ],
+  );
+
+  const handleUnblock = useCallback(
+    async (ip: string) => {
+      await api.unblockIp(ip);
+      blocklistQ.refresh();
+      statsQ.refresh();
+    },
+    [blocklistQ, statsQ],
   );
 
   return (
@@ -179,6 +195,11 @@ export default function App() {
         <SeverityChart alerts={alerts} />
       </div>
 
+      {/* Threat overview (MITRE tactics + top rules) */}
+      <div className="mb-6 animate-fade-in-up" style={{ animationDelay: "240ms" }}>
+        <ThreatOverview stats={statsQ.data} />
+      </div>
+
       {/* Red Team + ML panels */}
       <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="animate-fade-in-up" style={{ animationDelay: "260ms" }}>
@@ -189,21 +210,26 @@ export default function App() {
         </div>
       </div>
 
-      {/* Agent inventory */}
-      <div className="mb-6 animate-fade-in-up" style={{ animationDelay: "320ms" }}>
-        <AgentsPanel agents={agents} />
+      {/* Agent inventory + auto-response blocklist */}
+      <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="animate-fade-in-up" style={{ animationDelay: "320ms" }}>
+          <AgentsPanel agents={agents} />
+        </div>
+        <div className="animate-fade-in-up" style={{ animationDelay: "340ms" }}>
+          <BlocklistPanel blocked={blocked} onUnblock={handleUnblock} />
+        </div>
       </div>
 
       {/* Tables */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="animate-fade-in-up" style={{ animationDelay: "340ms" }}>
+        <div className="animate-fade-in-up" style={{ animationDelay: "360ms" }}>
           <AlertsTable
             alerts={alerts}
             onStatusChange={handleStatusChange}
             onTriage={handleTriage}
           />
         </div>
-        <div className="animate-fade-in-up" style={{ animationDelay: "380ms" }}>
+        <div className="animate-fade-in-up" style={{ animationDelay: "400ms" }}>
           <EventsTable events={events} />
         </div>
       </div>

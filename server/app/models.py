@@ -77,6 +77,23 @@ class Agent(Base):
     event_count = Column(Integer, default=0, nullable=False)
 
 
+class User(Base):
+    """A dashboard/API user account for the hardened login flow.
+
+    Passwords are stored as Argon2id hashes (never plaintext). `failed_attempts` + `locked_until`
+    implement account lockout; an optional `totp_secret` enables RFC-6238 second factor.
+    """
+
+    __tablename__ = "users"
+
+    username = Column(String(128), primary_key=True)
+    password_hash = Column(String(256), nullable=False)
+    totp_secret = Column(String(64), nullable=True)
+    failed_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=now_utc)
+
+
 class Alert(Base):
     """An alert produced by the rule engine from an event."""
 
@@ -105,3 +122,18 @@ class Alert(Base):
     # MITRE ATT&CK mapping carried from the matching rule.
     tactic = Column(String(64), nullable=True)
     technique = Column(String(32), nullable=True)
+
+
+class BlockedIP(Base):
+    """An IP blocked by the auto-response engine (or manually). BlocklistMiddleware rejects it.
+
+    Persisted so blocks survive restarts; the responder also keeps an in-memory mirror so the
+    middleware does not hit the DB on every request.
+    """
+
+    __tablename__ = "blocked_ips"
+
+    ip = Column(String(64), primary_key=True)
+    reason = Column(String(128), nullable=True)
+    rule_id = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=now_utc, index=True)

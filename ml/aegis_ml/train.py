@@ -5,6 +5,7 @@ Usage:
     python -m aegis_ml.train --only nids
 """
 import argparse
+import datetime as dt
 import json
 from pathlib import Path
 
@@ -47,7 +48,14 @@ def _train_one(name, X, y, feature_names, source, estimator):
     model.fit(X_train, y_train)
     metrics = _evaluate(model, X_test, y_test)
 
-    bundle = {"model": model, "feature_names": list(feature_names), "source": source}
+    bundle = {
+        "model": model,
+        "feature_names": list(feature_names),
+        "source": source,
+        "trained_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "n_samples": int(len(y)),
+        "metrics": metrics,
+    }
     joblib.dump(bundle, MODELS / f"{name}.joblib")
     (MODELS / f"{name}_metrics.json").write_text(
         json.dumps({"source": source, **metrics}, indent=2)
@@ -61,7 +69,7 @@ def _train_one(name, X, y, feature_names, source, estimator):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=["nids", "phishing"])
+    parser.add_argument("--only", choices=["nids", "phishing", "ueba", "dga"])
     args = parser.parse_args()
 
     if args.only in (None, "nids"):
@@ -72,6 +80,16 @@ def main():
     if args.only in (None, "phishing"):
         X, y, names, src = datasets.load_phishing()
         _train_one("phishing", X, y, names, src, LogisticRegression(max_iter=1000))
+
+    if args.only in (None, "ueba"):
+        X, y, names, src = datasets.load_login()
+        _train_one("ueba", X, y, names, src, RandomForestClassifier(
+            n_estimators=120, random_state=42, n_jobs=-1))
+
+    if args.only in (None, "dga"):
+        X, y, names, src = datasets.load_dga()
+        _train_one("dga", X, y, names, src, RandomForestClassifier(
+            n_estimators=120, random_state=42, n_jobs=-1))
 
     print(f"\nModels saved -> {MODELS}")
 

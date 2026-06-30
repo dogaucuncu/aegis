@@ -26,15 +26,36 @@ class TelemetryCollector:
         self,
         watch_paths: Optional[List[str]] = None,
         auth_log: Optional[str] = None,
+        monitor_arp: bool = False,
+        arp_table_file: Optional[str] = None,
+        monitor_flood: bool = False,
+        flood_window: int = 60,
+        flood_threshold: int = 50,
+        canary_paths: Optional[List[str]] = None,
     ):
         self._seen_pids: Set[int] = set(psutil.pids())
         self._watch_paths = [Path(p) for p in (watch_paths or [])]
         self._auth_log = Path(auth_log) if auth_log else None
         self._file_hashes: Dict[str, str] = self._snapshot_files()
+        # Canary (decoy) files: any modification/deletion is a high-severity tripwire.
+        self._canary_paths = [Path(p) for p in (canary_paths or [])]
+        self._canary_hashes: Dict[str, Optional[str]] = {
+            str(p): self._hash_file(p) for p in self._canary_paths
+        }
         # offset to read only new lines from the auth log
         self._auth_offset = self._auth_log.stat().st_size if (
             self._auth_log and self._auth_log.exists()
         ) else 0
+
+        # Optional network-layer detectors (Milestone 3).
+        self._arp = None
+        if monitor_arp:
+            from .arp_monitor import ARPMonitor
+            self._arp = ARPMonitor(arp_table_file)
+        self._flood = None
+        if monitor_flood:
+            from .flood_detector import FloodDetector
+            self._flood = FloodDetector(window_sec=flood_window, threshold=flood_threshold)
 
     def _now(self) -> str:
         # Naive UTC isoformat (compatible with the server's canonical format).
@@ -165,10 +186,33 @@ class TelemetryCollector:
             return events
         return events
 
+    def collect_canary(self) -> List[Dict]:
+        """Decoy files that must never change — modification/deletion = intrusion tripwire."""
+        events: List[Dict] = []
+        for path in self._canary_paths:
+            key = str(path)
+            current = self._hash_file(path)
+            old = self._canary_hashes.get(key)
+            if current == old:
+                continue
+            action = "deleted" if current is None else ("created" if old is None else "modified")
+            self._canary_hashes[key] = current
+            events.append({
+                "event_type": "canary_triggered",
+                "timestamp": self._now(),
+                "data": {"token": path.name, "kind": "file", "path": key, "action": action},
+            })
+        return events
+
     def collect(self) -> List[Dict]:
-        return (
-            self.collect_new_processes()
-            + self.collect_network()
-            + self.collect_file_changes()
-            + self.collect_auth_failures()
-        )
+        events = self.collect_new_processes()
+        network = self.collect_network()
+        events += network
+        events += self.collect_file_changes()
+        events += self.collect_auth_failures()
+        events += self.collect_canary()
+        if self._arp is not None:
+            events += self._arp.collect()
+        if self._flood is not None:
+            events += self._flood.analyze(network)
+        return events

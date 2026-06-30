@@ -29,6 +29,13 @@ def _load_rules() -> List[dict]:
 _RULES = _load_rules()
 
 
+def reload_rules() -> int:
+    """Hot-reload the YAML rules without restarting the server (threat-hunting / tuning)."""
+    global _RULES
+    _RULES = _load_rules()
+    return len(_RULES)
+
+
 def _get(event: models.Event, path: str, extra: Optional[Dict] = None) -> Any:
     if extra and path in extra:
         return extra[path]
@@ -63,6 +70,15 @@ def _check(cond: dict, event: models.Event) -> bool:
         return any(t in f for t in toks)
     if op == "len_gte":
         return isinstance(field, list) and len(field) >= value
+    if op in ("gte", "lt"):
+        try:
+            f, v = float(field), float(value)
+        except (TypeError, ValueError):
+            return False
+        return f >= v if op == "gte" else f < v
+    if op == "regex_match":
+        flags = re.IGNORECASE if lower else 0
+        return re.search(str(value), str(field), flags) is not None
     return False
 
 
@@ -87,6 +103,41 @@ def _window_count(rule: dict, event: models.Event, db: Session) -> Optional[int]
     return count if count >= win["threshold"] else None
 
 
+def _correlation_count(rule: dict, event: models.Event, db: Session) -> Optional[int]:
+    """Count prior events that, together with this triggering event, form an attack sequence.
+
+    A `correlation` rule fires when >= `threshold` prior events of `prior_event_type` (matching
+    `prior_conditions` and sharing the `group_by` value) occurred within `window_seconds` before
+    the triggering event. Classic use: a successful login preceded by many failed attempts.
+    """
+    corr = rule["correlation"]
+    window = corr.get("window_seconds", 120)
+    threshold = corr.get("threshold", 5)
+    prior_type = corr.get("prior_event_type", event.event_type)
+    group_by = corr.get("group_by")
+    prior_conditions = corr.get("prior_conditions", [])
+
+    start = now_utc() - dt.timedelta(seconds=window)
+    target_group = _get(event, group_by) if group_by else None
+
+    # Volumes are low (educational SOC), so filter by type/time in SQL and the rest in Python —
+    # this keeps JSON `group_by` portable across SQLite and PostgreSQL.
+    candidates = (
+        db.query(models.Event)
+        .filter(models.Event.event_type == prior_type, models.Event.timestamp >= start)
+        .all()
+    )
+    count = 0
+    for ev in candidates:
+        if ev.id == event.id:
+            continue
+        if group_by and _get(ev, group_by) != target_group:
+            continue
+        if all(_check(c, ev) for c in prior_conditions):
+            count += 1
+    return count if count >= threshold else None
+
+
 def evaluate(event: models.Event, db: Session) -> List[models.Alert]:
     alerts: List[models.Alert] = []
     for rule in _RULES:
@@ -96,6 +147,11 @@ def evaluate(event: models.Event, db: Session) -> List[models.Alert]:
             continue
 
         extra: Dict[str, Any] = {}
+        if rule.get("type") == "correlation":
+            count = _correlation_count(rule, event, db)
+            if count is None:
+                continue
+            extra["prior_count"] = count
         if "window" in rule:
             count = _window_count(rule, event, db)
             if count is None:
@@ -114,6 +170,11 @@ def evaluate(event: models.Event, db: Session) -> List[models.Alert]:
         else:
             dedup_key = f"{rule_id}|{event.agent_id}|{title}"
 
+        # MITRE tags may be static on the rule, or pulled per-event (e.g. the generic vuln rule
+        # reads the tactic/technique the scanner attached to each finding).
+        tactic = rule.get("tactic") or _get(event, rule.get("tactic_field", ""))
+        technique = rule.get("technique") or _get(event, rule.get("technique_field", ""))
+
         alerts.append(
             models.Alert(
                 rule_id=rule_id,
@@ -121,8 +182,8 @@ def evaluate(event: models.Event, db: Session) -> List[models.Alert]:
                 title=title,
                 description=_interpolate(rule.get("description", ""), event, extra),
                 dedup_key=dedup_key,
-                tactic=rule.get("tactic"),
-                technique=rule.get("technique"),
+                tactic=tactic,
+                technique=technique,
             )
         )
     return alerts

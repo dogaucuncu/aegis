@@ -11,7 +11,7 @@ import binascii
 import datetime as dt
 import json
 
-from aegis_crypto import aesgcm, canonical, signing
+from aegis_crypto import aesgcm, canonical, pfs, signing
 from cryptography.exceptions import InvalidTag
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -29,9 +29,22 @@ FRESHNESS_SEC = 300  # ±5 min freshness window
 
 @router.post("/ingest/secure", response_model=schemas.IngestResult)
 def ingest_secure(env: schemas.SecureEnvelope, db: Session = Depends(get_db)):
-    aes_key = keystore.derive_agent_aes(env.agent_id)
+    # Identity is always proven by the agent's registered Ed25519 key.
     pub_key = keystore.load_agent_pubkey(env.agent_id)
-    if aes_key is None or pub_key is None:
+    if pub_key is None:
+        raise HTTPException(status_code=401, detail=f"Agent not registered: {env.agent_id}")
+
+    # AES key derivation depends on the envelope version:
+    #   v2 -> ephemeral-static ECDH (PFS): server static private + the agent's per-message epk.
+    #   v1 -> static-static ECDH: the long-lived agent+server X25519 keys.
+    if env.version >= 2 and env.epk:
+        try:
+            aes_key = pfs.recipient_session_key(keystore.server_x25519_private(), env.epk)
+        except (ValueError, binascii.Error):
+            raise HTTPException(status_code=400, detail="Invalid ephemeral public key (epk)")
+    else:
+        aes_key = keystore.derive_agent_aes(env.agent_id)
+    if aes_key is None:
         raise HTTPException(status_code=401, detail=f"Agent not registered: {env.agent_id}")
 
     try:

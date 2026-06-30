@@ -52,6 +52,25 @@ export interface Integrity {
   message: string;
 }
 
+export interface Stats {
+  alerts_total: number;
+  alerts_open: number;
+  events_total: number;
+  blocked_ips: number;
+  by_severity: Record<string, number>;
+  by_tactic: Record<string, number>;
+  by_rule: Record<string, number>;
+  events_by_type: Record<string, number>;
+  top_agents: Record<string, number>;
+}
+
+export interface BlockedIP {
+  ip: string;
+  reason?: string | null;
+  rule_id?: string | null;
+  created_at: string;
+}
+
 // Server timestamps are naive UTC (no tz suffix); parse them as UTC, not browser-local.
 export function parseServerDate(ts: string): Date {
   return new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(ts) ? ts : ts + "Z");
@@ -69,6 +88,10 @@ export const api = {
   events: () => get<AegisEvent[]>("/api/events?limit=200"),
   agents: () => get<Agent[]>("/api/agents"),
   integrity: () => get<Integrity>("/api/integrity/verify"),
+  stats: () => get<Stats>("/api/stats"),
+  blocklist: () => get<BlockedIP[]>("/api/blocklist"),
+  unblockIp: (ip: string) =>
+    fetch(`${BASE}/api/blocklist/${encodeURIComponent(ip)}`, { method: "DELETE" }),
   updateAlertStatus: (id: number, status: string) =>
     fetch(`${BASE}/api/alerts/${id}/status?status=${status}`, { method: "POST" }),
   updateAlertTriage: (id: number, body: Triage) =>

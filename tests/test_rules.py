@@ -80,3 +80,72 @@ def test_file_integrity_alert(client):
          "data": {"path": "/etc/passwd", "action": "modified", "hash": "abc123"}}
     ]})
     assert "file-integrity" in _rule_ids(client)
+
+
+def test_gte_operator_fires_above_threshold(client):
+    client.post("/api/ingest", json={"events": [
+        {"agent_id": "ml", "event_type": "ueba_anomaly", "data": {"username": "bob", "score": 0.92}}
+    ]})
+    assert "ml-ueba-anomaly" in _rule_ids(client)
+
+
+def test_gte_operator_silent_below_threshold(client):
+    r = client.post("/api/ingest", json={"events": [
+        {"agent_id": "ml", "event_type": "ueba_anomaly", "data": {"username": "bob", "score": 0.30}}
+    ]})
+    assert r.json()["alerts_created"] == 0
+
+
+def test_numeric_and_regex_operators_unit():
+    """Directly exercise the new _check operators without the DB."""
+    from app import models, rules
+
+    ev = models.Event(agent_id="t", event_type="x",
+                      data={"cmd": "SELECT * FROM users", "n": 7})
+    assert rules._check({"field": "data.cmd", "op": "regex_match", "value": "select", "lower": True}, ev) is True
+    assert rules._check({"field": "data.cmd", "op": "regex_match", "value": "drop"}, ev) is False
+    assert rules._check({"field": "data.n", "op": "gte", "value": 5}, ev) is True
+    assert rules._check({"field": "data.n", "op": "lt", "value": 5}, ev) is False
+
+
+def test_vuln_alert_carries_per_finding_mitre(client):
+    """The generic vuln rule pulls tactic/technique from the scanner's finding data (M2)."""
+    client.post("/api/ingest", json={"events": [
+        {"agent_id": "s", "event_type": "vuln_finding",
+         "data": {"type": "ssti", "url": "http://x/greet", "param": "name",
+                  "severity": "high", "tactic": "Execution", "technique": "T1059"}}
+    ]})
+    alert = next(a for a in client.get("/api/alerts").json() if a["rule_id"] == "vuln-ssti")
+    assert alert["tactic"] == "Execution" and alert["technique"] == "T1059"
+
+
+def test_new_web_vuln_types_alert(client):
+    """Each new finding type maps to a vuln-<type> alert via the generic rule."""
+    events = [
+        {"agent_id": "s", "event_type": "vuln_finding",
+         "data": {"type": t, "url": f"http://x/{t}", "param": "p", "severity": "high"}}
+        for t in ("command_injection", "path_traversal", "ssrf", "idor", "prompt_injection")
+    ]
+    client.post("/api/ingest", json={"events": events})
+    ids = _rule_ids(client)
+    for t in ("command_injection", "path_traversal", "ssrf", "idor", "prompt_injection"):
+        assert f"vuln-{t}" in ids
+
+
+def test_waf_inspection_middleware_raises_alert(client):
+    """The opt-in request-inspection middleware flags an attack signature in the URL."""
+    from app.middleware import RequestInspectionMiddleware
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    waf_app = FastAPI()
+    waf_app.add_middleware(RequestInspectionMiddleware, enabled=True)
+
+    @waf_app.get("/x")
+    def _x():
+        return {"ok": True}
+
+    # Malicious query string (SQLi signature) — detection-only, request still succeeds.
+    assert TestClient(waf_app).get("/x", params={"id": "1' OR '1'='1"}).status_code == 200
+    # The alert is written to the shared DB the main app reads from.
+    assert "waf-signature" in _rule_ids(client)

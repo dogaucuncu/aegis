@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
-from . import integrity, models, notifications, rules
+from . import integrity, models, notifications, responder, rules
 from .utils import now_utc
 
 # The hash chain is global; to prevent concurrent appends from forking the chain,
@@ -106,6 +106,8 @@ def _append_locked(
                 alert.last_seen = now_utc()
                 db.add(alert)
                 alerts_created += 1
+                # Automated response policy (auto-block source IP) — no-op unless enabled.
+                responder.consider(db, alert, obj)
                 if alert.severity == "high":
                     new_high_alerts.append(
                         (alert.rule_id, alert.severity, alert.title, alert.description or "")
