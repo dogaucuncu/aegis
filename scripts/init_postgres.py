@@ -46,9 +46,10 @@ def main():
             conn.execute(f'CREATE DATABASE "{args.dbname}"')
             print(f"[init_postgres] '{args.dbname}' created.")
 
-    pw = args.password or "<password>"
-    print("\nDATABASE URL for the server:")
-    print(f'  postgresql+psycopg://{args.user}:{pw}@{args.host}:{args.port}/{args.dbname}')
+    # Don't echo the password back to the console/logs — print a template with a placeholder
+    # for the operator to substitute (the real value lives in their secret store / .env).
+    print("\nDATABASE URL for the server (replace <password> with the real value):")
+    print(f'  postgresql+psycopg://{args.user}:<password>@{args.host}:{args.port}/{args.dbname}')
 
 
 if __name__ == "__main__":

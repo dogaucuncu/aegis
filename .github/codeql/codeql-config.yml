@@ -1,0 +1,16 @@
+# CodeQL configuration for Aegis.
+#
+# Aegis is a security-training / blue-team platform, so parts of the repo are
+# *intentionally* vulnerable (lab victim targets, broken-crypto teaching modules,
+# deliberately-vulnerable test mocks). CodeQL flags those by design, which is pure
+# noise for this project — exclude them so alerts reflect only the real codebase
+# (agent, server, scanner, shared crypto library).
+name: "Aegis CodeQL config"
+
+paths-ignore:
+  # Intentionally-vulnerable lab targets (SQLi, XSS, SSRF, command/template injection…)
+  - lab/**
+  # Test code (incl. a deliberately-vulnerable mock HTTP server used to exercise the scanner)
+  - tests/**
+  # Educational "broken crypto" demonstrations (ECB, weak hashes, padding oracle)
+  - crypto/aegis_crypto/weak_crypto.py

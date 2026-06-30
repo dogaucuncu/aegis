@@ -8,6 +8,7 @@ On the server:
 The AES key is not stored on disk; it is derived via ECDH(server_priv, agent_pub) + HKDF.
 The keys are generated with `scripts/provision_agent.py`.
 """
+import re
 from typing import Optional
 
 from aegis_crypto import derive_aes_key, keys
@@ -17,6 +18,14 @@ from .config import BASE_DIR
 
 SERVER_KEYS_DIR = BASE_DIR / "keys"
 KEYS_DIR = SERVER_KEYS_DIR / "agents"
+
+# agent_id arrives from the (attacker-controllable) request body and is used to build
+# filesystem paths, so it must be a strict slug — otherwise "../../x" would escape KEYS_DIR.
+_VALID_AGENT_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+
+
+def _safe_agent_id(agent_id: str) -> bool:
+    return bool(_VALID_AGENT_ID.fullmatch(agent_id))
 
 
 def server_x25519_private():
@@ -32,6 +41,8 @@ def server_x25519_private():
 
 
 def load_agent_pubkey(agent_id: str) -> Optional[Ed25519PublicKey]:
+    if not _safe_agent_id(agent_id):
+        return None
     path = KEYS_DIR / f"{agent_id}.pub"
     if not path.exists():
         return None
@@ -40,6 +51,8 @@ def load_agent_pubkey(agent_id: str) -> Optional[Ed25519PublicKey]:
 
 def derive_agent_aes(agent_id: str) -> Optional[bytes]:
     """Derives the AES key from the agent's X25519 public key + the server's private key."""
+    if not _safe_agent_id(agent_id):
+        return None
     pub_path = KEYS_DIR / f"{agent_id}.x25519.pub"
     if not pub_path.exists():
         return None

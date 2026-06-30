@@ -24,6 +24,7 @@ def get_server_cert_sha256(
     is exactly the case where pinning adds value over CA trust.
     """
     ctx = ssl.create_default_context(cafile=cafile)
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2  # refuse obsolete TLSv1/1.1
     if cafile is None:
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
