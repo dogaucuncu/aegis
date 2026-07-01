@@ -8,6 +8,7 @@ from . import config
 from .api import (
     agents,
     alerts,
+    attest,
     auth_login,
     blocklist,
     canary,
@@ -92,6 +93,10 @@ app.include_router(auth_login.router)
 
 # Canary tokens are tripwires — reachable without auth so an intruder can trip them.
 app.include_router(canary.router)
+
+# TPM 2.0 attestation: /quote + /challenge are cryptographically verified (open); /enroll defines
+# the trust baseline and carries its own require_api_key dependency.
+app.include_router(attest.router)
 
 # Health check stays unauthenticated for orchestrator liveness probes.
 app.include_router(health.router)

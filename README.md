@@ -12,10 +12,10 @@ respond* loop:
 |--------|--------|--------------|
 | 🛡️ Defensive (Blue) | Agent telemetry + rule engine + SIEM | process / network / FIM / failed-login, **ARP-spoof & flood detection**, server-side **WAF** signatures, **canary/honeypot** tripwires, **auto-response IP blocklist**, threat-hunting stats, hot-reload rules |
 | ⚔️ Offensive (Red) | Port + web scanner + lab target | SQLi (error/blind), XSS, open-redirect, **command-injection, SSTI, path-traversal, SSRF, IDOR, CSRF, web-LLM prompt-injection**, **brute-force/spray**, **JWT alg=none**, MITRE-tagged findings |
-| 🔐 Cryptography | `aegis_crypto` shared library + secure channel | mTLS, AES-GCM, Ed25519, X25519/ECDH, hash-chain, **Argon2 + JWT + TOTP login**, **Perfect Forward Secrecy (ephemeral ECDH)**, **cert pinning**, **key rotation**, padding-oracle/weak-crypto demos |
+| 🔐 Cryptography | `aegis_crypto` shared library + secure channel | mTLS, AES-GCM, Ed25519, X25519/ECDH, hash-chain, **Argon2 + JWT + TOTP login**, **Perfect Forward Secrecy (ephemeral ECDH)**, **cert pinning**, **key rotation**, **TPM 2.0 measured-boot remote attestation**, padding-oracle/weak-crypto demos |
 | 🤖 ML | NIDS + phishing + UEBA + DGA microservice | network-anomaly, phishing URL, **UEBA login-anomaly**, **DGA/C2 domain** detection, per-prediction **explainability**, model **versioning** (`/model-info`), **adversarial-robustness** testing |
 
-Built across six expansion milestones (**M1–M6**) on top of Phases 0–5 — see [Expanded capabilities](#expanded-capabilities-m1m6).
+Built across seven expansion milestones (**M1–M7**) on top of Phases 0–5 — see [Expanded capabilities](#expanded-capabilities-m1m6).
 
 ## Architecture
 ```
@@ -64,19 +64,19 @@ aegis/
   agent/    psutil endpoint agent (plain/secure) + ARP, flood & canary detectors
   scanner/  port + web (SQLi/XSS/cmdi/SSTI/SSRF/IDOR/CSRF/LLM) + brute-force + JWT attacks
   ml/       NIDS + phishing + UEBA + DGA microservice (+ explainability, adversarial)
-  crypto/   aegis_crypto: Ed25519/AES-GCM/X25519 + Argon2/JWT/TOTP/PFS/cert-pin/weak-crypto
+  crypto/   aegis_crypto: Ed25519/AES-GCM/X25519 + Argon2/JWT/TOTP/PFS/cert-pin/TPM-attest/weak-crypto
   ui/       React + TS + Tailwind SOC dashboard (threat overview, blocklist, live SSE)
   lab/      intentionally vulnerable target (no Docker required)
-  tests/    pytest suite — 115 tests across all domains
-  scripts/  demo + provision + seed + killchain + arp_spoof + honeypot + adversarial + rotate
+  tests/    pytest suite — 128 tests across all domains
+  scripts/  demo + provision + seed + killchain + arp_spoof + honeypot + adversarial + rotate + tpm_replay
   docs/     architecture + sequence diagram + threat model
 ```
 
 ## Expanded capabilities (M1–M6)
 
-Six milestones extend the four domains. Every red capability is paired with a blue detection
+Seven milestones extend the four domains. Every red capability is paired with a blue detection
 (the `event → YAML rule → alert` contract), and the risky items (DDoS, MITM) are **detection-first**,
-hard-bound to `127.0.0.1` / the lab. Full pytest + ruff green (**115 tests**).
+hard-bound to `127.0.0.1` / the lab. Full pytest + ruff green (**128 tests**).
 
 | Milestone | Theme | Highlights |
 |-----------|-------|-----------|
@@ -86,6 +86,7 @@ hard-bound to `127.0.0.1` / the lab. Full pytest + ruff green (**115 tests**).
 | **M4** | Crypto deepening | **PFS** ephemeral-static ECDH (envelope v2); **JWT alg=none** attack vs hardened verify; **padding-oracle** attack + ECB/weak-hash demos; **cert pinning** + **key rotation** |
 | **M5** | ML / AI security | **DGA/C2** detector; per-prediction **explainability** (`top_features`); **versioning** (`/model-info`, sha256); **adversarial** evasion testing |
 | **M6** | Blue-team & platform | **Canary tokens** (`/api/canary/{token}`) + **honeypot** decoy service; **auto-response** IP blocklist; threat-hunting **`/api/stats`**; rule **hot-reload** (`/api/rules/reload`); dashboard panels |
+| **M7** | Hardware root of trust | **TPM 2.0 measured-boot attestation**: soft-TPM PCR bank + AK-signed **Quote**; server `/api/attest/{enroll,challenge,quote}` verifies signature + nonce vs. golden baseline; **PCR-drift** (bootkit/evil-maid) + **forged/replayed attestation** alerts; dashboard **Endpoint Integrity** panel; `tpm_replay_attack.py` |
 
 ```powershell
 # Credential kill chain (M1): brute-force -> detection -> hardened login -> UEBA
@@ -107,10 +108,15 @@ python ..\scripts\adversarial_test.py            # evasion rate -> ml_evasion al
 
 # Crypto extras (M4)
 python scripts\rotate_keys.py                     # rotate server X25519 (old key archived)
+
+# TPM 2.0 measured-boot attestation (M7): enroll a golden baseline, then attack the verifier
+python scripts\tpm_replay_attack.py               # honest=pass, replay/forgery=fail, tamper=drift
+#   -> tpm-attestation-fail (T1553) x2 + tpm-pcr-drift (T1542.003) alerts on the dashboard
 ```
 
 The dashboard surfaces all of this: a **MITRE threat overview** (tactic distribution + top rules),
-the **auto-response blocklist** (with unblock), agent inventory, and live alerts over SSE.
+an **Endpoint Integrity** panel (per-endpoint TPM attestation verdict — verified / PCR-drift /
+forged), the **auto-response blocklist** (with unblock), agent inventory, and live alerts over SSE.
 
 ## Secure mode (Phase 2 — Cryptography)
 Agent↔server traffic is encrypted with AES-GCM (the key is derived via **X25519 ECDH + HKDF** —
@@ -157,6 +163,34 @@ uvicorn app.main:app --port 8443 --ssl-keyfile ..\certs\server.key `
 > ⚠️ **Note:** On this machine Norton intercepts and re-signs localhost TLS too, so a client
 > going over the network cannot verify the server certificate with `verify=ca.pem`.
 > `mtls_selftest.py` bypasses this interception (in-memory) to prove the logic is correct.
+
+## TPM 2.0 measured-boot attestation (Milestone 7 — hardware root of trust)
+Aegis can prove an endpoint's **boot integrity** to the SOC. Measured boot records each stage
+(firmware → boot manager → Secure-Boot policy → kernel) into TPM **PCRs**; an **Attestation Key
+(AK)** signs a **Quote** that binds the current PCR state to a server-issued nonce.
+
+The verifier checks four things and reports the outcome as a `tpm_attestation` event → alert:
+1. the **AK signature** (only the enrolled endpoint can produce it),
+2. the **nonce** matches the challenge it just issued (**anti-replay**),
+3. the reported PCRs are consistent with the signed digest,
+4. the PCRs equal the **enrolled golden baseline** — otherwise the boot chain **drifted**.
+
+```powershell
+# With the SOC running on :8000 — enroll a golden baseline, then attack the verifier:
+python scripts\tpm_replay_attack.py
+#   [1] honest attestation      -> pass              (no alert)
+#   [2] replay stale quote      -> attestation_fail  (nonce_mismatch)   -> tpm-attestation-fail
+#   [3] forged PCRs (wrong key) -> attestation_fail  (bad_signature)    -> tpm-attestation-fail
+#   [4] boot tamper (bootkit)   -> pcr_drift          [PCR 4,7 changed]  -> tpm-pcr-drift
+```
+Alerts: **`tpm-pcr-drift`** (T1542.003 Pre-OS Boot / Bootkit) and **`tpm-attestation-fail`**
+(T1553 Subvert Trust Controls). A **soft-TPM** models the PCR bank so this runs with no hardware;
+where `tpm2-tools` are present the real SHA-256 PCR bank is read opportunistically
+(`aegis_crypto.tpm.real_pcr_read`). The agent can attest on a timer via
+`tpm_attest: true` in `config.yaml` (enroll-once + periodic Quote). API: `/api/attest/enroll`
+(API-key), `/api/attest/challenge`, `/api/attest/quote`, `/api/attest/status`. The dashboard's
+**Endpoint Integrity** panel reads `/api/attest/status` — the latest verdict per enrolled endpoint
+(verified / PCR-drift with the changed PCRs / forged-or-replayed), worst-first.
 
 ## Offensive scanning (Phase 3 — Red Team)
 The scanner finds port + web (SQLi/XSS) vulnerabilities and reports them to the SOC as alerts.
@@ -244,13 +278,14 @@ A single "dev" venv installs all packages + test tools:
 cd F:\aegis
 py -3.13 -m venv .venv-dev
 .\.venv-dev\Scripts\python.exe -m pip install -r requirements-dev.txt -e crypto
-.\.venv-dev\Scripts\python.exe -m pytest -q        # 115 tests
+.\.venv-dev\Scripts\python.exe -m pytest -q        # 128 tests
 .\.venv-dev\Scripts\python.exe -m ruff check .     # lint
 ```
 - **Tests:** `tests/` — rule engine, crypto round-trip/forged-signature/**PFS**/**padding-oracle**,
   hash-chain, secure ingestion (valid/forged/wrong-key/replay/stale), auth + **brute-force**,
   scanner (SQLi/XSS/**cmdi/SSTI/SSRF/IDOR/CSRF/web-LLM/JWT**), **network detection** (ARP/flood),
-  ML (phishing/UEBA/**DGA**/adversarial), and **M6** (canary/blocklist/stats/reload).
+  ML (phishing/UEBA/**DGA**/adversarial), **M6** (canary/blocklist/stats/reload), and
+  **M7 TPM attestation** (Quote verify / PCR-drift / replay / forgery).
 - **CI:** [.github/workflows/ci.yml](.github/workflows/ci.yml) — ruff + pytest + ml-train smoke +
   `pip-audit`; plus [CodeQL](.github/workflows/codeql.yml) (SAST) and [Dependabot](.github/dependabot.yml).
 - **Migrations:** `cd server; alembic upgrade head` (use `AEGIS_AUTO_CREATE=0` in production).
@@ -298,6 +333,7 @@ audit trail, real-time SSE dashboard.
 - [x] **M4** — Crypto deepening (PFS, JWT attacks, padding-oracle, cert pinning, key rotation)
 - [x] **M5** — ML/AI security (DGA, explainability, versioning, adversarial robustness)
 - [x] **M6** — Blue-team & platform (canary/honeypot, auto-response blocklist, threat-hunting)
+- [x] **M7** — Hardware root of trust (TPM 2.0 measured-boot attestation, PCR-drift + forged/replay detection)
 
 ## License
 Released under the [MIT License](LICENSE).
@@ -312,7 +348,8 @@ testing**. It deliberately bundles **offensive and dual-use tooling** alongside 
   path traversal, SSRF, IDOR, CSRF, open-redirect, and **web-LLM prompt injection**;
 - credential attacks — dictionary **brute-force** and **password spraying** — and **JWT `alg=none`** forgery;
 - network-attack **simulations** — ARP-spoof / MITM and volumetric **flood** — plus a capped load generator;
-- cryptographic-attack **demonstrations** — AES-CBC **padding oracle**, ECB / weak-hash;
+- cryptographic-attack **demonstrations** — AES-CBC **padding oracle**, ECB / weak-hash, and
+  **TPM attestation replay / forgery** against the measured-boot verifier;
 - an **intentionally vulnerable** lab app that executes attacker-controlled input (including OS
   commands) and a honeypot / decoy service.
 

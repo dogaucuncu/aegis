@@ -5,7 +5,7 @@
 - Canonical JSON serialization (deterministic bytes for signing/encryption)
 - Password hashing (Argon2id), TOTP (MFA) and JWT (HS256/EdDSA) for the login flow
 """
-from . import jwt_tokens, keys, passwords, pfs, tlspin, totp, weak_crypto
+from . import jwt_tokens, keys, passwords, pfs, tlspin, totp, tpm, weak_crypto
 from .aesgcm import decrypt, encrypt
 from .canonical import canonical_bytes, event_canonical
 from .kex import derive_aes_key
@@ -26,4 +26,5 @@ __all__ = [
     "pfs",
     "weak_crypto",
     "tlspin",
+    "tpm",
 ]

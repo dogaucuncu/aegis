@@ -129,3 +129,15 @@ export const TargetIcon = (p: IconProps) => (
     <circle cx="12" cy="12" r="0.5" fill="currentColor" />
   </Icon>
 );
+
+// Attestation / endpoint integrity — a fingerprint reads as identity + hardware trust.
+export const FingerprintIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 10a1.5 1.5 0 0 0-1.5 1.5c0 3-.5 5-1.5 6.5" />
+    <path d="M6.3 15.5A9 9 0 0 0 6 12a6 6 0 0 1 9.5-4.9" />
+    <path d="M17.5 9.5A6 6 0 0 1 18 12c0 2.3-.3 3.7-1 5.5" />
+    <path d="M12 12v1c0 2.5-.4 4.3-1.2 6" />
+    <path d="M14.8 18.5c.7-2 1-3.7 1-5.5a3.8 3.8 0 0 0-6.3-2.8" />
+    <path d="M4.8 8.5A9 9 0 0 1 19 8.2" />
+  </Icon>
+);

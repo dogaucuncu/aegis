@@ -71,6 +71,21 @@ export interface BlockedIP {
   created_at: string;
 }
 
+// Per-endpoint TPM 2.0 measured-boot attestation status (Milestone 7).
+export type AttestResult = "pass" | "pcr_drift" | "attestation_fail" | null;
+
+export interface Attestation {
+  agent_id: string;
+  enrolled_at: string;
+  pcr_count: number;
+  selection: number[];
+  last_result: AttestResult;
+  last_reason: string;
+  drifted_pcrs: number[];
+  source_ip?: string | null;
+  last_seen?: string | null;
+}
+
 // Server timestamps are naive UTC (no tz suffix); parse them as UTC, not browser-local.
 export function parseServerDate(ts: string): Date {
   return new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(ts) ? ts : ts + "Z");
@@ -90,6 +105,7 @@ export const api = {
   integrity: () => get<Integrity>("/api/integrity/verify"),
   stats: () => get<Stats>("/api/stats"),
   blocklist: () => get<BlockedIP[]>("/api/blocklist"),
+  attestation: () => get<Attestation[]>("/api/attest/status"),
   unblockIp: (ip: string) =>
     fetch(`${BASE}/api/blocklist/${encodeURIComponent(ip)}`, { method: "DELETE" }),
   updateAlertStatus: (id: number, status: string) =>

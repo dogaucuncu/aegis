@@ -218,3 +218,34 @@
   title: "Ağ flood/scan: {data.target_ip} ({data.connection_count}/{data.window_sec}s)"
   description: "kaynak={data.source} hedef={data.target_ip} sayı={data.connection_count}"
   dedup: "flood|{data.source}|{data.target_ip}"
+
+# --- Milestone 7: TPM 2.0 measured-boot attestation ---
+# Boot integrity drift: a valid Quote whose PCRs no longer match the enrolled golden baseline.
+# The boot chain changed (firmware/bootloader/kernel/Secure-Boot) — classic bootkit / evil-maid.
+- id: tpm-pcr-drift
+  event_type: tpm_attestation
+  severity: high
+  tactic: Persistence
+  technique: T1542.003
+  conditions:
+    - field: data.result
+      op: equals
+      value: pcr_drift
+  title: "TPM: Boot bütünlüğü ihlali (PCR drift) — {agent_id}"
+  description: "PCR sürüklenmesi drifted={data.drifted_pcrs} beklenen={data.expected} alınan={data.got} (olası bootkit/evil-maid) kaynak={data.source_ip}"
+  dedup: "tpmdrift|{agent_id}"
+
+# Forged / replayed attestation: the Quote failed cryptographic verification (bad AK signature,
+# a stale/replayed nonce, or a tampered PCR digest) — someone is faking platform health.
+- id: tpm-attestation-fail
+  event_type: tpm_attestation
+  severity: high
+  tactic: Defense Evasion
+  technique: T1553
+  conditions:
+    - field: data.result
+      op: equals
+      value: attestation_fail
+  title: "TPM: Attestation doğrulanamadı ({data.reason}) — {agent_id}"
+  description: "Sahte/replay attestation reddedildi: reason={data.reason} kaynak={data.source_ip}"
+  dedup: "tpmfail|{agent_id}|{data.reason}"

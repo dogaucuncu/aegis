@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { api } from "./api";
-import type { Alert, AegisEvent, Agent, Integrity, Stats, BlockedIP, Triage } from "./api";
+import type { Alert, AegisEvent, Agent, Integrity, Stats, BlockedIP, Triage, Attestation } from "./api";
 import { usePolling } from "./hooks/usePolling";
 import { useSSE } from "./hooks/useSSE";
 import { StatCard } from "./components/StatCard";
@@ -13,6 +13,7 @@ import { MlPanel } from "./components/MlPanel";
 import { SeverityChart } from "./components/SeverityChart";
 import { ThreatOverview } from "./components/ThreatOverview";
 import { BlocklistPanel } from "./components/BlocklistPanel";
+import { AttestationPanel } from "./components/AttestationPanel";
 import {
   ShieldCheckIcon,
   ActivityIcon,
@@ -33,6 +34,7 @@ export default function App() {
   const integrityQ = usePolling<Integrity>(api.integrity, 15000);
   const statsQ = usePolling<Stats>(api.stats, 15000);
   const blocklistQ = usePolling<BlockedIP[]>(api.blocklist, 15000);
+  const attestQ = usePolling<Attestation[]>(api.attestation, 15000);
 
   const [liveCount, setLiveCount] = useState(0);
   const [lastUpdate, setLastUpdate] = useState(() => new Date());
@@ -50,6 +52,7 @@ export default function App() {
       integrityQ.refresh();
       statsQ.refresh();
       blocklistQ.refresh();
+      attestQ.refresh();
       setLastUpdate(new Date());
     }, 400);
   });
@@ -58,6 +61,7 @@ export default function App() {
   const events = eventsQ.data ?? [];
   const agents = agentsQ.data ?? [];
   const blocked = blocklistQ.data ?? [];
+  const attestations = attestQ.data ?? [];
   const highCount = alerts.filter((a) => a.severity === "high").length;
   const openCount = alerts.filter((a) => a.status === "open").length;
   const connected = !alertsQ.error;
@@ -198,6 +202,11 @@ export default function App() {
       {/* Threat overview (MITRE tactics + top rules) */}
       <div className="mb-6 animate-fade-in-up" style={{ animationDelay: "240ms" }}>
         <ThreatOverview stats={statsQ.data} />
+      </div>
+
+      {/* Endpoint integrity — TPM 2.0 measured-boot attestation */}
+      <div className="mb-6 animate-fade-in-up" style={{ animationDelay: "250ms" }}>
+        <AttestationPanel endpoints={attestations} />
       </div>
 
       {/* Red Team + ML panels */}

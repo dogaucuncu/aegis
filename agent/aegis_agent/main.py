@@ -69,6 +69,22 @@ def main():
     sender = build_sender(cfg, server_url, agent_id)
     mode = cfg.get("mode", "plain")
 
+    # Optional TPM 2.0 measured-boot attestation (Milestone 7): enroll the golden baseline once,
+    # then re-attest on its own cadence so boot tampering (bootkit / evil-maid) trips an alert.
+    attestor = None
+    attest_interval = float(cfg.get("tpm_attest_interval", 60))
+    last_attest = 0.0
+    if cfg.get("tpm_attest"):
+        from .tpm_attest import TpmAttestor
+
+        base = Path(__file__).resolve().parent.parent  # agent/
+        attestor = TpmAttestor(agent_id, base / cfg.get("tpm_ak_key", "secrets/ak_ed25519.key"))
+        try:
+            attestor.enroll(server_url, api_key=cfg.get("api_key"))
+            log.info("TPM attestation enrolled (golden baseline)")
+        except Exception:
+            log.exception("TPM enrollment failed")
+
     log.info("%s -> %s (mode=%s, every %ss)", agent_id, server_url, mode, interval)
     while True:
         # The collection loop must be resilient: a single failed round must not crash the agent.
@@ -79,6 +95,13 @@ def main():
                 log.info("%s events sent", sent)
         except Exception:
             log.exception("collection/send round failed")
+        if attestor is not None and (time.time() - last_attest) >= attest_interval:
+            try:
+                res = attestor.attest(server_url)
+                log.info("TPM attestation: %s", res.get("result"))
+            except Exception:
+                log.exception("TPM attestation round failed")
+            last_attest = time.time()
         time.sleep(interval)
 
 

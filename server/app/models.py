@@ -124,6 +124,37 @@ class Alert(Base):
     technique = Column(String(32), nullable=True)
 
 
+class AttestationBaseline(Base):
+    """Enrolled 'known-good' measured-boot state for an endpoint (Milestone 7 — TPM 2.0).
+
+    Set once from a trusted golden image; later attestation Quotes are compared against it. Drift
+    means the boot chain changed (firmware / bootloader / kernel / Secure-Boot policy) — the
+    fingerprint of a bootkit or an evil-maid tamper.
+    """
+
+    __tablename__ = "attestation_baselines"
+
+    agent_id = Column(String(128), primary_key=True)
+    ak_pubkey = Column(Text, nullable=False)  # Attestation Key public key (Ed25519, PEM)
+    pcrs = Column(JSON, nullable=False)  # golden baseline {index: hex}
+    selection = Column(JSON, nullable=False)  # quoted PCR indices
+    created_at = Column(DateTime, default=now_utc)
+
+
+class AttestationChallenge(Base):
+    """A single-use attestation nonce issued to an agent (anti-replay for Quotes).
+
+    One active challenge per agent (upserted on each `/api/attest/challenge`); consumed — deleted —
+    when the matching Quote is submitted, so a captured Quote cannot be replayed.
+    """
+
+    __tablename__ = "attestation_challenges"
+
+    agent_id = Column(String(128), primary_key=True)
+    nonce = Column(String(64), nullable=False)
+    created_at = Column(DateTime, default=now_utc)
+
+
 class BlockedIP(Base):
     """An IP blocked by the auto-response engine (or manually). BlocklistMiddleware rejects it.
 
