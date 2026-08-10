@@ -46,3 +46,24 @@ jobs:
       - name: ML train smoke
         working-directory: ml
         run: python -m aegis_ml.train
+
+  ui:
+    # The dashboard build (tsc + vite) was previously not covered by CI, so a
+    # Tailwind v3 -> v4 bump silently broke it while every check stayed green.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Build (tsc + vite)
+        working-directory: ui
+        run: npm run build
