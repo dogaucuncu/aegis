@@ -1,52 +1,28 @@
 # Dependabot — automated dependency update PRs.
 # Covers every Python requirements file, the UI npm project, and the GitHub Actions.
-# Updates are GROUPED (one PR per ecosystem/dir) and capped to keep PR noise low.
+# Updates are GROUPED and capped to keep PR noise low.
 # NOTE: lab/vulnerable_app is intentionally vulnerable and is deliberately excluded.
+#
+# The pip requirements files are updated as ONE unit (single entry listing every
+# directory, single group). This is deliberate: requirements-dev.txt pulls in all of
+# them via -r, so a package pinned in two files at two different versions makes pip
+# fail with ResolutionImpossible and CI goes red. Splitting pip into one entry per
+# directory used to bump e.g. fastapi in ml/ but not server/, which broke CI on every
+# such PR. Keep the directories in a single entry so shared pins always move together.
 version: 2
 updates:
   - package-ecosystem: pip
-    directory: "/"
+    directories:
+      - "/"
+      - "/server"
+      - "/agent"
+      - "/scanner"
+      - "/ml"
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
     groups:
-      pip-root:
-        patterns: ["*"]
-
-  - package-ecosystem: pip
-    directory: "/server"
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 3
-    groups:
-      pip-server:
-        patterns: ["*"]
-
-  - package-ecosystem: pip
-    directory: "/agent"
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 3
-    groups:
-      pip-agent:
-        patterns: ["*"]
-
-  - package-ecosystem: pip
-    directory: "/scanner"
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 3
-    groups:
-      pip-scanner:
-        patterns: ["*"]
-
-  - package-ecosystem: pip
-    directory: "/ml"
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 3
-    groups:
-      pip-ml:
+      pip-all:
         patterns: ["*"]
 
   - package-ecosystem: npm
