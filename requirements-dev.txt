@@ -4,7 +4,7 @@
 #   .\.venv-dev\Scripts\python.exe -m pip install -r requirements-dev.txt -e crypto
 pytest==9.1.1
 httpx==0.28.1
-ruff==0.16.2
+ruff==0.16.10
 
 -r server/requirements.txt
 -r agent/requirements.txt
